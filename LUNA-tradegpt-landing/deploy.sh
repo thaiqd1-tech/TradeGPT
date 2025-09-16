@@ -39,13 +39,17 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Check if docker-compose is installed locally
-if ! command -v docker-compose &> /dev/null; then
-    print_error "Docker Compose is not installed. Please install Docker Compose first."
+if ! command -v docker-compose &> /dev/null && ! command -v docker &> /dev/null; then
+    print_error "Docker is not installed. Please install Docker first."
     exit 1
 fi
 
 print_status "Building Docker image..."
-docker-compose build
+if command -v docker-compose &> /dev/null; then
+    docker-compose build
+else
+    docker compose build
+fi
 
 print_status "Saving Docker image..."
 docker save tradegpt-landing_tradegpt-landing:latest | gzip > tradegpt-landing.tar.gz
