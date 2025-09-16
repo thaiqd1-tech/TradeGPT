@@ -1,34 +1,28 @@
 # File: Dockerfile
 
 # --- Giai đoạn 1: Build ---
-    FROM node:20-slim AS builder
-    WORKDIR /app
-    
-    # Cài đặt các dependencies
-    COPY package*.json ./
-    RUN npm install
-    
-    # Copy source code và build ứng dụng
-    COPY . .
-    RUN npm run build
-    
-    # --- Giai đoạn 2: Production ---
-    FROM node:20-slim
-    
-    WORKDIR /app
-    
-    
-    # Copy các file cần thiết cho production từ giai đoạn build
-    # Nhờ có 'output: standalone', Next.js đã gom tất cả những gì cần thiết vào đây
-    COPY --from=builder /app/public ./public
-    COPY --from=builder --chown=node:node /app/.next/standalone ./
-    COPY --from=builder --chown=node:node /app/.next/static ./.next/static
-    
-    # Chuyển sang user 'node'
-    USER node
-    
-    EXPOSE 3000
-    ENV PORT 3000
-    
-    # Lệnh để khởi động server Next.js đã được tối ưu
-    CMD ["node", "server.js"]
+FROM node:20-slim AS builder
+WORKDIR /app
+
+# Cài đặt các dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy source code và build ứng dụng
+COPY . .
+RUN npm run build
+
+# --- Giai đoạn 2: Production ---
+FROM nginx:alpine
+
+# Copy các file build từ giai đoạn builder
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy cấu hình nginx tùy chỉnh (nếu có)
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 80
+EXPOSE 80
+
+# Khởi động nginx
+CMD ["nginx", "-g", "daemon off;"]
