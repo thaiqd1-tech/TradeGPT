@@ -1,32 +1,34 @@
-# Multi-stage build for React app
-FROM node:18-alpine as build
+# File: Dockerfile
 
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies (including devDependencies for build)
-RUN npm ci
-
-# Copy source code
-COPY . .
-
-# Build the app
-RUN npm run build
-
-# Production stage with nginx
-FROM nginx:alpine
-
-# Copy built app from build stage
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx/default.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
-EXPOSE 80
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# --- Giai đoạn 1: Build ---
+    FROM node:20-slim AS builder
+    WORKDIR /app
+    
+    # Cài đặt các dependencies
+    COPY package*.json ./
+    RUN npm install
+    
+    # Copy source code và build ứng dụng
+    COPY . .
+    RUN npm run build
+    
+    # --- Giai đoạn 2: Production ---
+    FROM node:20-slim
+    
+    WORKDIR /app
+    
+    
+    # Copy các file cần thiết cho production từ giai đoạn build
+    # Nhờ có 'output: standalone', Next.js đã gom tất cả những gì cần thiết vào đây
+    COPY --from=builder /app/public ./public
+    COPY --from=builder --chown=node:node /app/.next/standalone ./
+    COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+    
+    # Chuyển sang user 'node'
+    USER node
+    
+    EXPOSE 3000
+    ENV PORT 3000
+    
+    # Lệnh để khởi động server Next.js đã được tối ưu
+    CMD ["node", "server.js"]
