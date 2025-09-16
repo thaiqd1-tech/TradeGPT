@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  tradegpt-landing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tradegpt-landing-app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    networks:
+      - tradegpt-network
+
+networks:
+  tradegpt-network:
+    driver: bridge
