@@ -1,24 +1,20 @@
-# File: docker-compose.yml
+# File: docker-compose.yml (Đã sửa đổi)
 version: '3.8'
 
 services:
-  frontend:
+  # Chỉ cần một service duy nhất, đặt tên là webserver hoặc nginx
+  webserver:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: always
-
-  nginx:
-    image: nginx:stable-alpine
     restart: always
     ports:
       - "80:80"
       - "443:443"
     volumes:
+      # Mount cấu hình Nginx để xử lý domain và SSL
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
       # Volume để certbot xác thực (webroot)
       - ./certbot/www:/var/www/certbot 
-      # Volume QUAN TRỌNG NHẤT cho SSL: chia sẻ thư mục chứng chỉ vào container
-      - /etc/letsencrypt:/etc/letsencrypt:ro 
-    depends_on:
-      - frontend
+      # Volume để đọc chứng chỉ SSL từ host
+      - /etc/letsencrypt:/etc/letsencrypt:ro
