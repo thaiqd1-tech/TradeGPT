@@ -54,7 +54,7 @@ const FeaturesSection = () => {
   ]
 
   return (
-    <section id="features" className="py-24 bg-gradient-to-b from-dark-900 to-dark-800">
+    <section id="features" className="pt-12 pb-24 bg-gradient-to-b from-dark-900 to-dark-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-20">
@@ -98,7 +98,7 @@ const FeaturesSection = () => {
         {/* Bottom CTA */}
         <div className="text-center mt-16">
           <button className="btn-primary">
-            Explore All Features
+            EUse TradeGPT Now
           </button>
         </div>
       </div>

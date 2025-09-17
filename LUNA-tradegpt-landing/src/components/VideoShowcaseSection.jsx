@@ -11,9 +11,22 @@ const VideoShowcaseSection = () => {
   const [currentThumbnailIndex, setCurrentThumbnailIndex] = useState(0)
   const videoRef = useRef(null)
 
+  // Load YouTube API
+  useEffect(() => {
+    const tag = document.createElement('script')
+    tag.src = 'https://www.youtube.com/iframe_api'
+    const firstScriptTag = document.getElementsByTagName('script')[0]
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
+
+    // Global function for YouTube API
+    window.onYouTubeIframeAPIReady = () => {
+      console.log('YouTube API loaded')
+    }
+  }, [])
+
   // YouTube video ID - using a reliable public video for demo
-  const videoId = 'dQw4w9WgXcQ' // Rick Astley - Never Gonna Give You Up (reliable public video)
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&modestbranding=1&showinfo=0&controls=1&autoplay=0&mute=0`
+  const videoId = 'fJ0B-BgewWg' // TradeGPT Platform Demo Video
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&modestbranding=1&showinfo=0&controls=1&autoplay=1&mute=1&loop=0&playlist=${videoId}`
 
   // Multiple thumbnail resolution options with fallbacks
   const thumbnailOptions = [
@@ -30,9 +43,15 @@ const VideoShowcaseSection = () => {
     setShowControls(false)
   }
 
+  const handleVideoEnd = () => {
+    // Quay về trạng thái ban đầu khi video kết thúc
+    setIsPlaying(false)
+    setShowControls(true)
+  }
+
   const handleThumbnailError = () => {
     console.warn(`Thumbnail failed to load: ${thumbnailOptions[currentThumbnailIndex]}`)
-    
+
     if (currentThumbnailIndex < thumbnailOptions.length - 1) {
       setCurrentThumbnailIndex(prev => prev + 1)
     } else {
@@ -54,10 +73,10 @@ const VideoShowcaseSection = () => {
   ]
 
   return (
-<section id="video-showcase" className="py-24 bg-gradient-to-b from-dark-900 to-dark-800 relative overflow-hidden">
+    <section id="video-showcase" className="py-18 bg-gradient-to-b from-dark-900 to-dark-800 relative overflow-hidden">
       {/* Background Elements */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%2523ffffff%22%20fill-opacity%3D%220.02%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40"></div>
-      
+      {/* <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%2523ffffff%22%20fill-opacity%3D%220.02%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40"></div> */}
+
       {/* Floating Elements */}
       <div className="absolute top-20 left-10 floating-animation">
         <div className="glass-effect p-3 rounded-xl">
@@ -75,14 +94,14 @@ const VideoShowcaseSection = () => {
         <div className="text-center mb-16">
           <div className="inline-flex items-center px-4 py-2 rounded-full glass-effect text-sm font-medium text-white mb-6">
             <Play className="h-4 w-4 mr-2 text-red-400" />
-            Product Demo
+            How TradeGPT work?
           </div>
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
-            See TradeGPT in Action
-            <span className="gradient-text block">Watch Our Platform Demo</span>
+            Not just what’s happening
+            <span className="gradient-text block">TradeGPT reveals WHAT TO DO</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-12">
-            Discover how our AI-powered investment platform transforms complex market data into actionable insights in just minutes.
+            By analyzing the full landscape - trading strategy, real-time data, catalysts, context, news and more.
           </p>
         </div>
 
@@ -92,7 +111,7 @@ const VideoShowcaseSection = () => {
             {/* Video Frame */}
             <div className="relative bg-gradient-to-br from-dark-800 to-dark-900 rounded-3xl p-2 shadow-2xl">
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-black">
-{!isPlaying && showControls ? (
+                {!isPlaying && showControls ? (
                   // Custom Thumbnail with Play Button
                   <div className="relative w-full h-full bg-gradient-to-br from-primary-900/50 to-accent-900/50 flex items-center justify-center">
                     {/* YouTube Thumbnail with Fallback */}
@@ -135,7 +154,7 @@ const VideoShowcaseSection = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Loading State */}
                     {!isLoaded && !thumbnailError && (
                       <div className="absolute inset-0 bg-gradient-to-br from-primary-900/70 to-accent-900/70 flex items-center justify-center">
@@ -145,11 +164,11 @@ const VideoShowcaseSection = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30"></div>
-                    
-{/* Play Button */}
+
+                    {/* Play Button */}
                     <button
                       onClick={handlePlayClick}
                       className="relative z-10 group/play bg-white/20 backdrop-blur-sm border border-white/30 rounded-full p-8 transition-all duration-500 hover:bg-white/30 hover:scale-110 hover:border-white/50 shadow-2xl"
@@ -176,7 +195,7 @@ const VideoShowcaseSection = () => {
                         <p className="text-gray-300 mb-4">
                           Learn how AI transforms your investment strategy with real-time analysis and intelligent recommendations.
                         </p>
-                        
+
                         {/* Video Stats */}
                         <div className="flex items-center space-x-6">
                           {videoStats.map((stat, index) => {
@@ -208,7 +227,7 @@ const VideoShowcaseSection = () => {
                       </div>
                     </div>
                   </div>
-) : (
+                ) : (
                   // YouTube Embed with Error Handling
                   <div className="relative w-full h-full">
                     <iframe
@@ -219,10 +238,25 @@ const VideoShowcaseSection = () => {
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
-                      onLoad={() => console.log('YouTube iframe loaded successfully')}
+                      onLoad={() => {
+                        console.log('YouTube iframe loaded successfully')
+                        // Thêm event listener cho video kết thúc
+                        if (window.YT && window.YT.Player) {
+                          const player = new window.YT.Player(videoRef.current, {
+                            events: {
+                              'onStateChange': (event) => {
+                                // State 0 = video ended
+                                if (event.data === 0) {
+                                  handleVideoEnd()
+                                }
+                              }
+                            }
+                          })
+                        }
+                      }}
                       onError={() => console.error('YouTube iframe failed to load')}
                     ></iframe>
-                    
+
                     {/* Fallback for iframe loading issues */}
                     <div className="absolute inset-0 flex items-center justify-center bg-dark-900/90 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-2xl pointer-events-none">
                       <div className="text-center text-white">
@@ -244,39 +278,6 @@ const VideoShowcaseSection = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-accent-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
           </div>
 
-          {/* Video Features */}
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center group">
-              <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-primary-500/10 to-primary-600/10 border border-primary-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Eye className="h-8 w-8 text-primary-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Real-Time Analysis</h3>
-              <p className="text-gray-400">
-                Watch how our AI processes market data and generates insights in real-time.
-              </p>
-            </div>
-
-            <div className="text-center group">
-              <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-accent-500/10 to-accent-600/10 border border-accent-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Users className="h-8 w-8 text-accent-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">User Experience</h3>
-              <p className="text-gray-400">
-                See how intuitive and powerful our platform is for investors of all levels.
-              </p>
-            </div>
-
-            <div className="text-center group">
-              <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Clock className="h-8 w-8 text-yellow-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Quick Setup</h3>
-              <p className="text-gray-400">
-                Learn how to get started and see results in just a few minutes.
-              </p>
-            </div>
-          </div>
-
           {/* CTA Section */}
           <div className="mt-16 text-center">
             <div className="glass-effect rounded-3xl p-8 max-w-3xl mx-auto">
@@ -286,15 +287,15 @@ const VideoShowcaseSection = () => {
               <p className="text-gray-300 mb-8">
                 Start your free trial today and see how AI can transform your investment strategy.
               </p>
-<div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button 
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button
                   className="btn-primary flex items-center group"
                   onClick={() => setShowSignupModal(true)}
                 >
                   Start Free Trial
                   <Play className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </button>
-                <button 
+                <button
                   className="btn-secondary"
                   onClick={() => {
                     alert('Demo scheduling functionality would be implemented here')
@@ -304,12 +305,12 @@ const VideoShowcaseSection = () => {
                 </button>
               </div>
             </div>
-</div>
+          </div>
         </div>
       </div>
 
       {/* Signup Modal */}
-      <SignupModal 
+      <SignupModal
         isOpen={showSignupModal}
         onClose={() => setShowSignupModal(false)}
         title="Start Your Free Trial"

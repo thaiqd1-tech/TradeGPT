@@ -20,12 +20,6 @@ const StatsSection = () => {
       value: '23.7%',
       label: 'Average Returns',
       description: 'Higher returns compared to traditional methods'
-    },
-    {
-      icon: Award,
-      value: '98.5%',
-      label: 'Accuracy Rate',
-      description: 'AI prediction accuracy for market movements'
     }
   ]
 
@@ -42,7 +36,7 @@ const StatsSection = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {stats.map((stat, index) => {
             const IconComponent = stat.icon
             return (
@@ -51,14 +45,14 @@ const StatsSection = () => {
                 className="text-center group animate-slide-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="glass-effect rounded-2xl p-8 transition-all duration-300 hover:bg-white/10 hover:scale-105">
+                <div className="glass-effect rounded-2xl p-6 transition-all duration-300 hover:bg-white/10 hover:scale-105 h-full">
                   <div className="inline-flex p-4 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 mb-6 group-hover:scale-110 transition-transform duration-300">
                     <IconComponent className="h-8 w-8 text-white" />
                   </div>
-                  <div className="text-4xl sm:text-5xl font-bold text-white mb-2">
+                  <div className="text-3xl sm:text-4xl font-bold text-white mb-3">
                     {stat.value}
                   </div>
-                  <div className="text-xl font-semibold text-gray-200 mb-3">
+                  <div className="text-lg font-semibold text-gray-200 mb-4">
                     {stat.label}
                   </div>
                   <p className="text-gray-400 text-sm leading-relaxed">

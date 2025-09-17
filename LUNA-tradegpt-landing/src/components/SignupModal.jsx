@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Mail, Lock, User, Eye, EyeOff, ArrowRight, MessageCircle } from 'lucide-react'
 
 const SignupModal = ({ isOpen, onClose, title = "Start Your Free Trial", subtitle = "Create your account to access TradeGPT's powerful investment analysis" }) => {
@@ -11,6 +12,27 @@ const SignupModal = ({ isOpen, onClose, title = "Start Your Free Trial", subtitl
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Ensure component is mounted before using createPortal
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isOpen])
 
   const handleSignupSubmit = async (e) => {
     e.preventDefault()
@@ -64,15 +86,37 @@ const SignupModal = ({ isOpen, onClose, title = "Start Your Free Trial", subtitl
     setShowConfirmPassword(false)
   }
 
-  if (!isOpen) return null
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleClose()
+      }
+    }
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    document.addEventListener('keydown', handleEscKey)
+    return () => document.removeEventListener('keydown', handleEscKey)
+  }, [isOpen])
+
+  // Handle backdrop click
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleClose()
+    }
+  }
+
+  if (!isOpen || !mounted) return null
+
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+      onClick={handleBackdropClick}
+    >
       <div className="bg-gradient-to-br from-dark-800 to-dark-900 border border-white/20 rounded-3xl p-8 max-w-md w-full relative animate-fade-in">
         {/* Close Button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"
         >
           <X className="h-6 w-6" />
         </button>
@@ -195,6 +239,9 @@ const SignupModal = ({ isOpen, onClose, title = "Start Your Free Trial", subtitl
       </div>
     </div>
   )
+
+  // Use createPortal to render modal outside of the component tree
+  return createPortal(modalContent, document.body)
 }
 
 export default SignupModal

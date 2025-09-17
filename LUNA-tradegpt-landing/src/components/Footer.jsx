@@ -4,33 +4,18 @@ import { TrendingUp, Mail, Phone, MapPin, Twitter, Linkedin, Facebook, Instagram
 const Footer = () => {
   const footerLinks = {
     product: [
-      { name: 'Features', href: '#features' },
-      { name: 'Pricing', href: '#pricing' },
-      { name: 'API', href: '#api' },
-      { name: 'Integrations', href: '#integrations' },
-      { name: 'Security', href: '#security' }
+      { name: 'Stocks' },
+      { name: 'Forex (FX)' },
+      { name: 'Crypto' },
+      { name: 'ETFs' },
     ],
     company: [
-      { name: 'About Us', href: '#about' },
-      { name: 'Careers', href: '#careers' },
-      { name: 'Press', href: '#press' },
-      { name: 'Blog', href: '#blog' },
-      { name: 'Contact', href: '#contact' }
+      { name: 'About' },
+      { name: 'Support' },
+      { name: 'Contact' },
+      { name: 'Privacy Policy' },
+      { name: 'Terms of use' },
     ],
-    resources: [
-      { name: 'Documentation', href: '#docs' },
-      { name: 'Help Center', href: '#help' },
-      { name: 'Community', href: '#community' },
-      { name: 'Webinars', href: '#webinars' },
-      { name: 'Case Studies', href: '#cases' }
-    ],
-    legal: [
-      { name: 'Privacy Policy', href: '#privacy' },
-      { name: 'Terms of Service', href: '#terms' },
-      { name: 'Cookie Policy', href: '#cookies' },
-      { name: 'Compliance', href: '#compliance' },
-      { name: 'Licenses', href: '#licenses' }
-    ]
   }
 
   const socialLinks = [
@@ -41,44 +26,42 @@ const Footer = () => {
   ]
 
   return (
-    <footer className="bg-dark-900 border-t border-white/10">
+    <footer id="about" className="bg-dark-900 border-t border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Footer Content */}
         <div className="py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Brand Section */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-1">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="bg-gradient-to-r from-primary-500 to-accent-500 p-2 rounded-xl">
-                  <TrendingUp className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-2xl font-bold text-white">TradeGPT</span>
+                <span className="text-2xl text-white">
+                  <span className="font-bold bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent">
+                    Trade
+                  </span>
+                  GPT
+                </span>
               </div>
               <p className="text-gray-400 text-lg leading-relaxed mb-8 max-w-md">
-                Empowering investors with AI-driven insights and real-time market analysis to make smarter investment decisions.
+                Copyright © 2025 TradeGPT. All rights reserved.
               </p>
-              
+
               {/* Contact Info */}
               <div className="space-y-4">
                 <div className="flex items-center space-x-3 text-gray-400">
                   <Mail className="h-5 w-5" />
-                  <span>contact@tradegpt.com</span>
+                  <span>contact@tradegpt.live</span>
                 </div>
                 <div className="flex items-center space-x-3 text-gray-400">
                   <Phone className="h-5 w-5" />
-                  <span>+1 (555) 123-4567</span>
-                </div>
-                <div className="flex items-center space-x-3 text-gray-400">
-                  <MapPin className="h-5 w-5" />
-                  <span>New York, NY 10001</span>
+                  <span>+84 384265999</span>
                 </div>
               </div>
             </div>
 
             {/* Links Sections */}
             <div>
-              <h3 className="text-white font-semibold text-lg mb-6">Product</h3>
-              <ul className="space-y-4">
+              <h3 className="text-white font-semibold text-lg mb-6 text-center">Products</h3>
+              <ul className="space-y-4 text-center">
                 {footerLinks.product.map((link) => (
                   <li key={link.name}>
                     <a
@@ -93,25 +76,9 @@ const Footer = () => {
             </div>
 
             <div>
-              <h3 className="text-white font-semibold text-lg mb-6">Company</h3>
-              <ul className="space-y-4">
+              <h3 className="text-white font-semibold text-lg mb-6 text-center">Company</h3>
+              <ul className="space-y-4 text-center">
                 {footerLinks.company.map((link) => (
-                  <li key={link.name}>
-                    <a
-                      href={link.href}
-                      className="text-gray-400 hover:text-white transition-colors duration-200"
-                    >
-                      {link.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold text-lg mb-6">Resources</h3>
-              <ul className="space-y-4">
-                {footerLinks.resources.map((link) => (
                   <li key={link.name}>
                     <a
                       href={link.href}
@@ -152,41 +119,15 @@ const Footer = () => {
 
         {/* Bottom Footer */}
         <div className="py-8 border-t border-white/10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            {/* Copyright */}
-            <div className="text-gray-400 text-center md:text-left">
-              <p>&copy; 2024 TradeGPT. All rights reserved.</p>
+          <div className="text-center">
+            {/* Risk Warning */}
+            <div className="text-gray-400 mb-4">
+              <h1 className="text-lg font-semibold mb-2">Risk Warnings and Investment Disclaimers</h1>
+              <p className="text-sm leading-relaxed max-w-4xl mx-auto">
+                This A.I. is continuously learning and evolving, but its insights are not financial advice. Trading carries significant risks, and past results do not guarantee future outcomes. You should carefully assess your financial situation and consult a professional before making any trading decisions.
+              </p>
             </div>
 
-            {/* Legal Links */}
-            <div className="flex flex-wrap items-center gap-6">
-              {footerLinks.legal.map((link) => (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  className="text-gray-400 hover:text-white transition-colors duration-200 text-sm"
-                >
-                  {link.name}
-                </a>
-              ))}
-            </div>
-
-            {/* Social Links */}
-            <div className="flex items-center space-x-4">
-              {socialLinks.map((social) => {
-                const IconComponent = social.icon
-                return (
-                  <a
-                    key={social.name}
-                    href={social.href}
-                    className="text-gray-400 hover:text-white transition-colors duration-200 p-2 hover:bg-white/10 rounded-lg"
-                    aria-label={social.name}
-                  >
-                    <IconComponent className="h-5 w-5" />
-                  </a>
-                )
-              })}
-            </div>
           </div>
         </div>
       </div>

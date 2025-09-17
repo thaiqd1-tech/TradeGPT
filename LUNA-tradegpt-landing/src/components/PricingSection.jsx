@@ -15,22 +15,19 @@ const PricingSection = () => {
       subtitle: 'Ideal for personal projects',
       price: billingCycle === 'monthly' ? 79 : 790,
       originalPrice: billingCycle === 'monthly' ? 99 : 990,
-      assets: '377 Assets',
-      tokens: '8 Token',
+      assets: '28 Markets',
+      tokens: '800 Tokens',
       icon: TrendingUp,
       iconColor: 'text-green-400',
       bgGradient: 'from-green-500/10 to-emerald-500/10',
       borderColor: 'border-green-500/20',
       buttonStyle: 'bg-green-500 hover:bg-green-600',
       features: [
-        'Everything from Basic, plus',
-        '25 more markets',
-        'Some fundamentals',
-        'Commodities',
-        'No daily limits',
         '99.95% SLA',
         'Email support',
-        'Basic analytics'
+        'Max 1 question/ min',
+        'News Analysis',
+        '2 schedule reports'
       ]
     },
     {
@@ -39,8 +36,8 @@ const PricingSection = () => {
       subtitle: 'Perfect for teams',
       price: billingCycle === 'monthly' ? 229 : 2290,
       originalPrice: billingCycle === 'monthly' ? 299 : 2990,
-      assets: '1,597 Assets',
-      tokens: '1,500 Token',
+      assets: '80 Markets',
+      tokens: '2500 token',
       icon: Users,
       iconColor: 'text-primary-400',
       bgGradient: 'from-primary-500/10 to-blue-500/10',
@@ -48,16 +45,10 @@ const PricingSection = () => {
       buttonStyle: 'bg-primary-500 hover:bg-primary-600',
       isPopular: true,
       features: [
-        'Everything from Grow, plus',
-        '52 additional markets',
-        'Even more fundamentals',
-        'Pre/post US data',
-        'Market movers',
-        'Advanced analytics',
-        'Priority support',
-        'Team collaboration',
-        'Custom alerts',
-        'API access'
+        'Everything from Grow',
+        'Max 5 questions/ min',
+        'Market movers analytics',
+        '5 schedule reports'
       ]
     },
     {
@@ -66,26 +57,17 @@ const PricingSection = () => {
       subtitle: 'Best value for larger teams',
       price: billingCycle === 'monthly' ? 999 : 9990,
       originalPrice: billingCycle === 'monthly' ? 1299 : 12990,
-      assets: '10,946 Assets',
-      tokens: '10,000 Token',
+      assets: '213 Markets around the world',
+      tokens: '15000 token',
       icon: Building,
       iconColor: 'text-purple-400',
       bgGradient: 'from-purple-500/10 to-pink-500/10',
       borderColor: 'border-purple-500/20',
       buttonStyle: 'bg-purple-500 hover:bg-purple-600',
       features: [
-        'Everything from Pro, plus',
-        'All markets',
-        'Actual fundamentals',
-        'Mutual funds & ETFs breakdown data',
-        'Analysis data',
-        'Priority support',
-        'Dedicated account manager',
-        'Custom integrations',
-        'White-label options',
-        'Advanced security',
-        'SLA guarantee',
-        'Training & onboarding'
+        'Everything from Pro',
+        'Unlimited question/ min',
+        'Unlimited schedule reports'
       ]
     }
   ]
@@ -112,7 +94,7 @@ const handlePlanSelect = (planId) => {
           </div>
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
             Choose the Perfect Plan
-            <span className="gradient-text block">for Your Investment Journey</span>
+            <span className="gradient-text block">for Your AI Trading Analysis Journey</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-12">
             Scale your investment analysis with our flexible pricing options. From personal projects to enterprise solutions.
