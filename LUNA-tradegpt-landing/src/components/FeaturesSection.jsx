@@ -1,7 +1,10 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Brain, BarChart3, Shield, Zap, TrendingUp, Target, Globe, Clock } from 'lucide-react'
+import SignupModal from './SignupModal'
 
 const FeaturesSection = () => {
+  const [showSignupModal, setShowSignupModal] = useState(false)
+  
   const features = [
     {
       icon: Brain,
@@ -97,11 +100,22 @@ const FeaturesSection = () => {
 
         {/* Bottom CTA */}
         <div className="text-center mt-12 sm:mt-16">
-          <button className="btn-primary w-full sm:w-auto">
+          <button 
+            className="btn-primary w-full sm:w-auto"
+            onClick={() => setShowSignupModal(true)}
+          >
             Use TradeGPT Now
           </button>
         </div>
       </div>
+
+      {/* Signup Modal */}
+      <SignupModal
+        isOpen={showSignupModal}
+        onClose={() => setShowSignupModal(false)}
+        title="Start Your TradeGPT Journey"
+        subtitle="Experience the power of AI-driven investment analysis. Join thousands of successful investors today!"
+      />
     </section>
   )
 }

@@ -221,10 +221,13 @@ const handlePlanSelect = (planId) => {
                   <div className="mt-auto">
                     {/* CTA Button */}
                     <button
-                      onClick={scrollToVideoDemo}
+                      onClick={() => {
+                        setSelectedPlan({ name: 'Enterprise', subtitle: 'Custom solution for your business' })
+                        setShowSignupModal(true)
+                      }}
                       className={`w-full ${plan.buttonStyle} text-white font-semibold py-3 sm:py-4 px-4 sm:px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center group mb-3 sm:mb-4 text-sm sm:text-base`}
                     >
-                      Watch Demo
+                      Get Started
                       <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" />
                     </button>
 
