@@ -10,6 +10,16 @@ const CTASection = () => {
     'Money-back guarantee'
   ]
 
+  const scrollToVideoShowcase = () => {
+    const videoSection = document.getElementById('video-showcase')
+    if (videoSection) {
+      videoSection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      })
+    }
+  }
+
   return (
     <section id="cta" className="py-24 bg-gradient-to-r from-primary-900 to-accent-900 relative overflow-hidden">
       {/* Background Elements */}
@@ -58,12 +68,9 @@ const CTASection = () => {
             </button>
             <button
               className="btn-secondary text-lg py-4 px-10"
-              onClick={() => {
-                // Handle demo scheduling
-                alert('Demo scheduling would be implemented here')
-              }}
+              onClick={scrollToVideoShowcase}
             >
-              Schedule Demo
+              Watch Demo
             </button>
           </div>
 

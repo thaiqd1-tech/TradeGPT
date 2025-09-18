@@ -7,7 +7,7 @@ const TestimonialsSection = () => {
       name: 'Sarah Chen',
       role: 'Portfolio Manager',
       company: 'Goldman Sachs',
-      image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+      image: 'https://static.vecteezy.com/system/resources/previews/029/640/896/non_2x/side-view-of-a-handsome-young-man-face-on-white-background-generative-ai-free-photo.jpeg',
       content: 'TradeGPT has revolutionized how I analyze market opportunities. The AI insights have helped me achieve 35% better returns for my clients.',
       rating: 5
     },
