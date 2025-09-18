@@ -86,10 +86,16 @@ const TradingViewWidget = ({
   return (
     <section className="py-8">
       <style>{`
-        /* PHƯƠNG PHÁP 3: Clip-path để cắt góc */
+        /* PHƯƠNG PHÁP 3: Clip-path để cắt góc - Responsive */
         .clip-logo-container {
-          clip-path: polygon(0 0, calc(100% - 80px) 0, calc(100% - 80px) 100%, 0 100%);
-          /* THAY ĐỔI 80px THÀNH GIÁ TRỊ KHÁC ĐỂ CẮT NHIỀU/ÍT HƠN */
+          clip-path: polygon(0 0, calc(100% - 60px) 0, calc(100% - 60px) 100%, 0 100%);
+          /* Mobile: cắt 60px, Desktop: cắt 80px */
+        }
+        
+        @media (min-width: 640px) {
+          .clip-logo-container {
+            clip-path: polygon(0 0, calc(100% - 80px) 0, calc(100% - 80px) 100%, 0 100%);
+          }
         }
 
         /* Ẩn iframe scrollbar */
@@ -111,7 +117,7 @@ const TradingViewWidget = ({
         }
       `}</style>
 
-        <div className="max-w-7xl ml-auto sm:px-6 lg:px-8 relative pr-4 ">
+        <div className="max-w-7xl ml-12 -mr-5 sm:ml-16 sm:-mr-8 md:ml-24 md:-mr-12 lg:ml-32 lg:-mr-16 xl:ml-28 xl:-mr-20 relative">
           <div className="clip-logo-container">
             <div
               ref={container}

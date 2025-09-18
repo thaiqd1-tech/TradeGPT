@@ -73,44 +73,44 @@ const VideoShowcaseSection = () => {
   ]
 
   return (
-    <section id="video-showcase" className="py-18 bg-gradient-to-b from-dark-900 to-dark-800 relative overflow-hidden">
+    <section id="video-showcase" className="py-12 sm:py-16 md:py-18 lg:py-20 bg-gradient-to-b from-dark-900 to-dark-800 relative overflow-hidden">
       {/* Background Elements */}
       {/* <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%2523ffffff%22%20fill-opacity%3D%220.02%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40"></div> */}
 
       {/* Floating Elements */}
-      <div className="absolute top-20 left-10 floating-animation">
-        <div className="glass-effect p-3 rounded-xl">
-          <Play className="h-6 w-6 text-primary-400" />
+      <div className="absolute top-4 left-4 sm:top-8 sm:left-8 lg:top-20 lg:left-10 floating-animation hidden sm:block">
+        <div className="glass-effect p-2 sm:p-3 rounded-xl">
+          <Play className="h-4 w-4 sm:h-6 sm:w-6 text-primary-400" />
         </div>
       </div>
-      <div className="absolute bottom-20 right-10 floating-animation" style={{ animationDelay: '1.5s' }}>
-        <div className="glass-effect p-3 rounded-xl">
-          <Volume2 className="h-6 w-6 text-accent-400" />
+      <div className="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 lg:bottom-20 lg:right-10 floating-animation hidden sm:block" style={{ animationDelay: '1.5s' }}>
+        <div className="glass-effect p-2 sm:p-3 rounded-xl">
+          <Volume2 className="h-4 w-4 sm:h-6 sm:w-6 text-accent-400" />
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center px-4 py-2 rounded-full glass-effect text-sm font-medium text-white mb-6">
+        <div className="text-center mb-12 sm:mb-16">
+          <div className="inline-flex items-center px-4 py-2 rounded-full glass-effect text-sm font-medium text-white mb-4 sm:mb-6">
             <Play className="h-4 w-4 mr-2 text-red-400" />
             How TradeGPT work?
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
-            Not just what’s happening
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 px-4">
+            Not just what's happening
             <span className="gradient-text block">TradeGPT reveals WHAT TO DO</span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-12">
+          <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8 sm:mb-12 px-4">
             By analyzing the full landscape - trading strategy, real-time data, catalysts, context, news and more.
           </p>
         </div>
 
         {/* Video Container */}
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto px-4">
           <div className="relative group">
             {/* Video Frame */}
-            <div className="relative bg-gradient-to-br from-dark-800 to-dark-900 rounded-3xl p-2 shadow-2xl">
-              <div className="relative aspect-video rounded-2xl overflow-hidden bg-black">
+            <div className="relative bg-gradient-to-br from-dark-800 to-dark-900 rounded-2xl sm:rounded-3xl p-1 sm:p-2 shadow-2xl">
+              <div className="relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden bg-black">
                 {!isPlaying && showControls ? (
                   // Custom Thumbnail with Play Button
                   <div className="relative w-full h-full bg-gradient-to-br from-primary-900/50 to-accent-900/50 flex items-center justify-center">
@@ -171,39 +171,46 @@ const VideoShowcaseSection = () => {
                     {/* Play Button */}
                     <button
                       onClick={handlePlayClick}
-                      className="relative z-10 group/play bg-white/20 backdrop-blur-sm border border-white/30 rounded-full p-8 transition-all duration-500 hover:bg-white/30 hover:scale-110 hover:border-white/50 shadow-2xl"
+                      className="relative z-20 group/play bg-white/20 backdrop-blur-sm border border-white/30 rounded-full p-4 sm:p-6 lg:p-8 transition-all duration-500 hover:bg-white/30 hover:scale-110 hover:border-white/50 shadow-2xl"
                       aria-label="Play TradeGPT Demo Video"
                     >
-                      <Play className="h-16 w-16 text-white ml-2 transition-transform group-hover/play:scale-110" />
+                      <Play className="h-8 w-8 sm:h-12 sm:w-12 lg:h-16 lg:w-16 text-white ml-1 transition-transform group-hover/play:scale-110" />
                       <div className="absolute inset-0 rounded-full bg-white/10 animate-ping"></div>
                     </button>
 
+                    {/* Mobile Play Hint */}
+                    <div className="absolute top-4 left-4 right-4 sm:hidden z-10">
+                      <div className="bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-center">
+                        <p className="text-white text-sm font-medium">Tap to play video</p>
+                      </div>
+                    </div>
+
                     {/* Video Info Overlay */}
-                    <div className="absolute bottom-6 left-6 right-6 z-10">
-                      <div className="glass-effect rounded-2xl p-6">
+                    <div className="absolute bottom-3 left-3 right-3 sm:bottom-6 sm:left-6 sm:right-6 z-0 hidden sm:block">
+                      <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6">
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className="text-2xl font-bold text-white">
+                          <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">
                             TradeGPT Platform Overview
                           </h3>
                           {thumbnailError && (
-                            <div className="flex items-center text-yellow-400 text-sm">
-                              <AlertCircle className="h-4 w-4 mr-1" />
+                            <div className="flex items-center text-yellow-400 text-xs sm:text-sm">
+                              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                               <span>Preview loading...</span>
                             </div>
                           )}
                         </div>
-                        <p className="text-gray-300 mb-4">
+                        <p className="text-gray-300 mb-3 sm:mb-4 text-sm sm:text-base">
                           Learn how AI transforms your investment strategy with real-time analysis and intelligent recommendations.
                         </p>
 
                         {/* Video Stats */}
-                        <div className="flex items-center space-x-6">
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
                           {videoStats.map((stat, index) => {
                             const IconComponent = stat.icon
                             return (
                               <div key={index} className="flex items-center space-x-2">
-                                <IconComponent className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm text-gray-300">
+                                <IconComponent className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+                                <span className="text-xs sm:text-sm text-gray-300">
                                   <span className="font-semibold text-white">{stat.value}</span> {stat.label}
                                 </span>
                               </div>
@@ -279,24 +286,24 @@ const VideoShowcaseSection = () => {
           </div>
 
           {/* CTA Section */}
-          <div className="mt-16 text-center">
-            <div className="glass-effect rounded-3xl p-8 max-w-3xl mx-auto">
-              <h3 className="text-2xl font-bold text-white mb-4">
+          <div className="mt-12 sm:mt-16 text-center">
+            <div className="glass-effect rounded-2xl sm:rounded-3xl p-6 sm:p-8 max-w-3xl mx-auto">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">
                 Ready to Experience TradeGPT?
               </h3>
-              <p className="text-gray-300 mb-8">
+              <p className="text-gray-300 mb-6 sm:mb-8 text-sm sm:text-base">
                 Start your free trial today and see how AI can transform your investment strategy.
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                 <button
-                  className="btn-primary flex items-center group"
+                  className="btn-primary flex items-center group w-full sm:w-auto"
                   onClick={() => setShowSignupModal(true)}
                 >
                   Start Free Trial
                   <Play className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </button>
                 <button
-                  className="btn-secondary"
+                  className="btn-secondary w-full sm:w-auto"
                   onClick={() => {
                     alert('Demo scheduling functionality would be implemented here')
                   }}

@@ -54,25 +54,25 @@ const FeaturesSection = () => {
   ]
 
   return (
-    <section id="features" className="pt-12 pb-24 bg-gradient-to-b from-dark-900 to-dark-800">
+    <section id="features" className="pt-8 sm:pt-12 pb-16 sm:pb-20 lg:pb-24 bg-gradient-to-b from-dark-900 to-dark-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center mb-20">
-          <div className="inline-flex items-center px-4 py-2 rounded-full glass-effect text-sm font-medium text-white mb-6">
+        <div className="text-center mb-12 sm:mb-16 lg:mb-20">
+          <div className="inline-flex items-center px-4 py-2 rounded-full glass-effect text-sm font-medium text-white mb-4 sm:mb-6">
             <Zap className="h-4 w-4 mr-2 text-yellow-400" />
             Powerful Features
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 px-4">
             Everything You Need for
             <span className="gradient-text block">Smart Investing</span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+          <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto px-4">
             Our comprehensive suite of AI-powered tools gives you the edge you need to make informed investment decisions and maximize your returns.
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {features.map((feature, index) => {
             const IconComponent = feature.icon
             return (
@@ -81,13 +81,13 @@ const FeaturesSection = () => {
                 className="feature-card group animate-slide-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className={`inline-flex p-3 rounded-xl bg-gradient-to-r from-dark-800 to-dark-700 mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                  <IconComponent className={`h-6 w-6 ${feature.color}`} />
+                <div className={`inline-flex p-2 sm:p-3 rounded-xl bg-gradient-to-r from-dark-800 to-dark-700 mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                  <IconComponent className={`h-5 w-5 sm:h-6 sm:w-6 ${feature.color}`} />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-4">
+                <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
                   {feature.title}
                 </h3>
-                <p className="text-gray-400 leading-relaxed">
+                <p className="text-gray-400 leading-relaxed text-sm sm:text-base">
                   {feature.description}
                 </p>
               </div>
@@ -96,9 +96,9 @@ const FeaturesSection = () => {
         </div>
 
         {/* Bottom CTA */}
-        <div className="text-center mt-16">
-          <button className="btn-primary">
-            EUse TradeGPT Now
+        <div className="text-center mt-12 sm:mt-16">
+          <button className="btn-primary w-full sm:w-auto">
+            Use TradeGPT Now
           </button>
         </div>
       </div>
