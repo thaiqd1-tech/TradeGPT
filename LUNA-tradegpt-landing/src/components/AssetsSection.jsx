@@ -64,45 +64,66 @@ const TradingViewWidget = ({
 
     container.current.appendChild(containerDiv)
 
+    // Thêm observer để ẩn logo sau khi widget load
+    const observer = new MutationObserver(() => {
+      hideTradingViewLogo()
+    })
+
+    observer.observe(container.current, {
+      childList: true,
+      subtree: true
+    })
+
     return () => {
+      observer.disconnect()
       if (container.current) {
         container.current.innerHTML = ''
       }
     }
   }, [symbols])
 
+
   return (
     <section className="py-8">
       <style>{`
-        .tradingview-widget-container__widget {
-          pointer-events: none !important;
+        /* PHƯƠNG PHÁP 3: Clip-path để cắt góc */
+        .clip-logo-container {
+          clip-path: polygon(0 0, calc(100% - 80px) 0, calc(100% - 80px) 100%, 0 100%);
+          /* THAY ĐỔI 80px THÀNH GIÁ TRỊ KHÁC ĐỂ CẮT NHIỀU/ÍT HƠN */
         }
-        .tradingview-widget-container__widget * {
-          pointer-events: none !important;
+
+        /* Ẩn iframe scrollbar */
+        .tradingview-widget-container iframe {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
         }
-        /* Hide TradingView logo and branding */
-        .tradingview-widget-container__widget a[href*="tradingview.com"],
-        .tradingview-widget-container__widget .tradingview-widget-logo,
-        .tradingview-widget-container__widget .tv-widget-logo {
+        
+        .tradingview-widget-container iframe::-webkit-scrollbar {
           display: none !important;
         }
-        .label-dzbd7lyV label-e9c6dycV end-dzbd7lyV top-dzbd7lyV js-copyright-label {
-          display: none;
+
+        /* Text selection disabled */
+        .tradingview-widget-container * {
+          -webkit-user-select: none !important;
+          -moz-user-select: none !important;
+          -ms-user-select: none !important;
+          user-select: none !important;
         }
       `}</style>
-      <div className="max-w-2xl mx-auto px-2 sm:px-2 lg:px-2 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div
-            ref={container}
-            className="w-full pointer-events-none"
-            style={{
-              minHeight: '46px',
-              height: 'auto',
-              overflow: 'visible'
-            }}
-          />
+
+        <div className="max-w-7xl ml-auto sm:px-6 lg:px-8 relative pr-4 ">
+          <div className="clip-logo-container">
+            <div
+              ref={container}
+              className="w-full pointer-events-none"
+              style={{
+                minHeight: '46px',
+                height: 'auto',
+                overflow: 'visible'
+              }}
+            />
+          </div>
         </div>
-      </div>
     </section>
   )
 }
