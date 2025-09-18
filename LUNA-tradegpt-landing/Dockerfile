@@ -18,8 +18,8 @@ FROM nginx:alpine
 # Copy các file build từ giai đoạn builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy cấu hình nginx tùy chỉnh (nếu có)
-COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+# KHÔNG cần copy config ở đây nữa
+# COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
