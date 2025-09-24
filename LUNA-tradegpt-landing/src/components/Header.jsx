@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react'
-import { Menu, X, TrendingUp } from 'lucide-react'
+import { Menu, X, TrendingUp, LogOut, Clock, Bell, Users, Trash2, Puzzle,
+  Share2, Loader2, Coins, Gift, CheckCircle2, AlertCircle,
+  Info, PlayCircle, Building2, ChevronDown } from 'lucide-react'
+import { useNavigate, useLocation, Link, useParams } from 'react-router-dom'
+import { useLanguage } from '../hooks/useLanguage'
+import { useAuth } from '../hooks/useAuth'
 import SignupModal from './SignupModal'
+import LoginModal from './LoginModal'
 
 const Header = () => {
+  const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -30,6 +38,14 @@ const Header = () => {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' })
     }
+  }
+
+  const handleSignIn = () => {
+    setShowLoginModal(true)
+  }
+
+  const handleSignUp = () => {
+    setShowSignupModal(true)
   }
 
   return (
@@ -65,15 +81,17 @@ const Header = () => {
 
           {/* Desktop CTA Buttons */}
           <div className="hidden lg:flex items-center space-x-4">
-            <button className="text-gray-300 hover:text-white transition-colors duration-200 font-medium">
+            <button 
+              onClick={handleSignIn}
+              className="text-gray-300 hover:text-white transition-colors duration-200 font-medium"
+            >
               Sign In
             </button>
             <button
-              onClick={() => setShowSignupModal(true)}
+              onClick={handleSignUp}
               className="btn-primary"
             >
               Start Free Trial
-
             </button>
           </div>
 
@@ -103,12 +121,18 @@ const Header = () => {
                 </button>
               ))}
               <div className="pt-4 space-y-3">
-                <button className="w-full text-left text-gray-300 hover:text-white transition-colors duration-200 font-medium py-2">
+                <button 
+                  onClick={() => {
+                    handleSignIn()
+                    setIsMenuOpen(false)
+                  }}
+                  className="w-full text-left text-gray-300 hover:text-white transition-colors duration-200 font-medium py-2"
+                >
                   Sign In
                 </button>
                 <button
                   onClick={() => {
-                    setShowSignupModal(true)
+                    handleSignUp()
                     setIsMenuOpen(false)
                   }}
                   className="w-full btn-primary"
@@ -121,12 +145,24 @@ const Header = () => {
         )}
       </div>
 
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSwitchToSignup={() => {
+          setShowLoginModal(false)
+          setShowSignupModal(true)
+        }}
+      />
+
       {/* Signup Modal */}
       <SignupModal
         isOpen={showSignupModal}
         onClose={() => setShowSignupModal(false)}
-        title="Start Your Free Trial"
-        subtitle="Create your account and get instant access to TradeGPT's AI-powered investment analysis"
+        onSwitchToLogin={() => {
+          setShowSignupModal(false)
+          setShowLoginModal(true)
+        }}
       />
     </header>
   )

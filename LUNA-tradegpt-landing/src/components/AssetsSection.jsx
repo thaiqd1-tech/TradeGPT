@@ -27,6 +27,18 @@ const TradingViewWidget = ({
 }) => {
   const container = useRef(null)
 
+  // Safe no-op to avoid ReferenceError in environments where hiding is not supported
+  const hideTradingViewLogo = () => {
+    try {
+      if (!container.current) return;
+      // Best-effort: hide common branding anchors if present in same DOM (won't affect cross-origin iframes)
+      const anchors = container.current.querySelectorAll('a[href*="tradingview"], a[href*="TradingView"]');
+      anchors.forEach((a) => { a.style.display = 'none'; });
+    } catch (_) {
+      // ignore
+    }
+  }
+
   useEffect(() => {
     if (!container.current) return
 
@@ -64,18 +76,7 @@ const TradingViewWidget = ({
 
     container.current.appendChild(containerDiv)
 
-    // Thêm observer để ẩn logo sau khi widget load
-    const observer = new MutationObserver(() => {
-      hideTradingViewLogo()
-    })
-
-    observer.observe(container.current, {
-      childList: true,
-      subtree: true
-    })
-
     return () => {
-      observer.disconnect()
       if (container.current) {
         container.current.innerHTML = ''
       }
@@ -117,7 +118,7 @@ const TradingViewWidget = ({
         }
       `}</style>
 
-        <div className="max-w-7xl ml-12 -mr-5 sm:ml-16 sm:-mr-8 md:ml-24 md:-mr-12 lg:ml-32 lg:-mr-16 xl:ml-28 xl:-mr-20 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="clip-logo-container">
             <div
               ref={container}
