@@ -115,7 +115,7 @@ export const AgentCard = ({ agent, onEdit, onDelete }: AgentCardProps) => {
       <div className="flex gap-2 mt-auto">
         <Button
           className="flex-1 border border-slate-600 text-slate-200 bg-transparent hover:bg-blue-600 hover:text-white hover:border-blue-600 rounded-lg py-2 text-xs font-medium transition-all duration-200"
-          onClick={() => navigate(`/dashboard/agents/${agent.id}?fromProfile=true&newChat=1`)}
+          onClick={() => navigate(`/dashboard/agents/${agent.id}?fromProfile=true`)}
         >
           Chat
         </Button>

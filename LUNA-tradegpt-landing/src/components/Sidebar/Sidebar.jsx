@@ -42,6 +42,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '../../components/ui/button';
 import { useTheme } from '../../hooks/useTheme';
 import { Input } from '../ui/input';
+import { useWorkspaceRole } from '../../hooks/useWorkspaceRole';
 
 const Sidebar = React.memo(({ className, isMobileDrawer, userRole, onCloseSidebar }) => {
   const location = useLocation();
@@ -54,6 +55,17 @@ const Sidebar = React.memo(({ className, isMobileDrawer, userRole, onCloseSideba
   const { folders } = useFolders();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  // Lấy workspace role chính xác từ BE (có fallback nội bộ)
+  const workspaceRole = useWorkspaceRole();
+  // Map system role -> workspace role khi cần (fallback cuối)
+  const mapSystemToWorkspace = (role) => {
+    if (role === 'super_admin' || role === 'admin') return 'owner';
+    if (role === 'member' || role === 'owner') return role;
+    // "user" hoặc không xác định => member
+    return 'member';
+  };
+  const effectiveRole = workspaceRole || mapSystemToWorkspace(userRole || user?.role);
 
   const [showClearHistoryDialog, setShowClearHistoryDialog] = useState(false);
   const [agentIdToClear, setAgentIdToClear] = useState(null);
@@ -82,7 +94,7 @@ const Sidebar = React.memo(({ className, isMobileDrawer, userRole, onCloseSideba
 
   const filteredMenuItems = menuItems.filter(item => {
     // First check workspace permissions
-    if (!hasPermission(userRole, item.permission)) {
+    if (!hasPermission(effectiveRole, item.permission)) {
       return false;
     }
     // Then check system role permissions
@@ -247,10 +259,6 @@ const Sidebar = React.memo(({ className, isMobileDrawer, userRole, onCloseSideba
           ))}
         </nav>
       </aside>
-
-
-
-
 
       {/* Dialog xác nhận xóa lịch sử chat agent */}
       <Dialog open={showClearHistoryDialog} onOpenChange={setShowClearHistoryDialog}>

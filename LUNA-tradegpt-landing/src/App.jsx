@@ -11,11 +11,14 @@ import OnboardingCompanyWebsite from './pages/OnboardingCompanyWebsite'
 import OnboardingWorkspaceProfile from './pages/OnboardingWorkspaceProfile'
 import AgentChat from './pages/AgentChat'
 import AIAgentChat from './pages/AIAgentChat'
+import LoginPage from './pages/LoginPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './hooks/useAuth.jsx'
 import { ThemeProvider } from './hooks/useTheme'
 import { FolderProvider } from './contexts/FolderContext'
 import './App.css'
+import ScheduledTasksPage from './pages/ScheduledTasks';
+
 
 // Create a client
 const queryClient = new QueryClient({
@@ -49,6 +52,7 @@ function App() {
                       <PostAuthRouter />
                     </ProtectedRoute>
                   } />
+                  <Route path="/login" element={<LoginPage />} />
                   <Route path="/onboarding/create-workspace" element={
                     <ProtectedRoute>
                       <OnboardingCreateWorkspace />
@@ -79,7 +83,13 @@ function App() {
                       <AIAgentChat />
                     </ProtectedRoute>
                   } />
+                  <Route path="/dashboard/scheduled-tasks" element={
+                  <ProtectedRoute>
+                    <ScheduledTasksPage />
+                  </ProtectedRoute>
+                } />
                 </Routes>
+                
                 <Toaster />
               </div>
             </BrowserRouter>

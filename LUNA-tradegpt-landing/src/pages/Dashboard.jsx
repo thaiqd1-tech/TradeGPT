@@ -5,14 +5,7 @@ import { Badge } from "../components/ui/badge";
 import { Agent, Folder } from "../types/index";
 
 import { useState } from 'react';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationPrevious,
-  PaginationNext,
-} from '../components/ui/pagination';
+// Removed Pagination imports
 import AgentDialog from '../components/AgentDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
@@ -78,7 +71,7 @@ const Dashboard = () => {
     debouncedSearchTerm ? { search: debouncedSearchTerm } : undefined
   );
 
-  // Lấy agents và phân trang phù hợp
+  // Lấy agents và phân trang phù hợp (theo trang hiện tại)
   let agents = [];
   let pagination = undefined;
   let isLoadingAgents = false;
@@ -98,9 +91,92 @@ const Dashboard = () => {
   }
   // Sử dụng dữ liệu thật từ API
   
-  // Calculate pagination from API data
-  const totalPages = pagination?.total_pages || 1;
-  const currentPage = pagination?.page || page;
+  // ====== Fetch toàn bộ agents qua phân trang để lọc chính xác ======
+  const [allAgents, setAllAgents] = useState([]);
+  const [isLoadingAllAgents, setIsLoadingAllAgents] = useState(false);
+  const [allAgentsError, setAllAgentsError] = useState(null);
+
+  const fetchAllPublicAgents = React.useCallback(async (search = "") => {
+    let currentPage = 1;
+    const fetchPageSize = 100;
+    const aggregated = [];
+    while (true) {
+      const res = await import('../services/api').then(m => m.getPublicAgents(currentPage, fetchPageSize, search));
+      const items = Array.isArray(res?.data?.data) ? res.data.data : [];
+      aggregated.push(...items);
+      const totalPages = res?.data?.pagination?.total_pages || 1;
+      if (currentPage >= totalPages) break;
+      currentPage += 1;
+    }
+    return aggregated;
+  }, []);
+
+  const fetchAllAgentsByFolders = React.useCallback(async (folderIds = [], search = "") => {
+    let currentPage = 1;
+    const fetchPageSize = 100;
+    const aggregated = [];
+    while (true) {
+      const res = await import('../services/api').then(m => m.getAgentsByFolders(folderIds, currentPage, fetchPageSize, search ? { search } : undefined));
+      const folders = Array.isArray(res?.data) ? res.data : [];
+      for (const f of folders) {
+        if (Array.isArray(f?.agents)) aggregated.push(...f.agents);
+      }
+      const done = folders.every(f => (f?.pagination?.page || 1) >= (f?.pagination?.total_pages || 1));
+      if (done) break;
+      currentPage += 1;
+    }
+    return aggregated;
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        setIsLoadingAllAgents(true);
+        setAllAgentsError(null);
+        if (!workspace?.id) {
+          setAllAgents([]);
+          return;
+        }
+        const data = isAllAgents
+          ? await fetchAllPublicAgents(debouncedSearchTerm || "")
+          : await fetchAllAgentsByFolders([selectedFolderId], debouncedSearchTerm || "");
+        if (!cancelled) setAllAgents(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!cancelled) setAllAgentsError(e instanceof Error ? e.message : 'Failed to fetch all agents');
+        if (!cancelled) setAllAgents([]);
+      } finally {
+        if (!cancelled) setIsLoadingAllAgents(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [workspace?.id, isAllAgents, selectedFolderId, debouncedSearchTerm, fetchAllPublicAgents, fetchAllAgentsByFolders]);
+  // ====== End fetch-all ======
+  
+  // Log toàn bộ agents trước khi lọc để kiểm tra
+  try {
+    const source = allAgents?.length ? allAgents : agents;
+    // (logs removed as requested earlier)
+  } catch (_) {}
+
+  // Chỉ hiển thị 4 agents mong muốn (chuẩn hóa tên: trim + lowercase)
+  const allowedAgentNames = new Set(["forexis", "cris", "stosi", "etfs"]);
+  const sourceAgents = allAgents?.length ? allAgents : agents;
+  const filteredAgents = Array.isArray(sourceAgents)
+    ? sourceAgents.filter((agent) => {
+        const normalized = (agent?.name || '').trim().toLowerCase();
+        return allowedAgentNames.has(normalized);
+      })
+    : [];
+
+  try {
+    // (logs removed)
+  } catch (_) {}
+  
+  // Removed: Calculate pagination from API data (no longer used)
+  // const totalPages = pagination?.total_pages || 1;
+  // const currentPage = pagination?.page || page;
   
   // Handle API errors
   const hasError = errorPublicAgents || errorByFolders;
@@ -110,25 +186,11 @@ const Dashboard = () => {
   React.useEffect(() => {
     if (workspace?.id && !localStorage.getItem("selectedWorkspace")) {
       localStorage.setItem("selectedWorkspace", workspace.id);
-      console.log('Auto-selected workspace:', workspace.id);
+      // console.log removed
     }
   }, [workspace?.id]);
   
-  // Debug logging
-  console.log('Dashboard Debug:', {
-    workspace: workspace?.id,
-    selectedWorkspaceId: localStorage.getItem("selectedWorkspace"),
-    token: localStorage.getItem("token") ? 'exists' : 'missing',
-    folders: folders?.length || 0,
-    isAllAgents,
-    selectedFolderId,
-    publicAgentsData,
-    byFoldersData,
-    isLoadingAgents,
-    hasError,
-    errorMessage
-  });
-
+  // Debug logging removed
 
   // Reset về trang 1 khi searchTerm thay đổi
   React.useEffect(() => {
@@ -162,11 +224,11 @@ const Dashboard = () => {
   // Lấy tất cả các vị trí (position) có trong agents để làm filter
   const allPositions = React.useMemo(() => {
     const positions = new Set();
-    agents.forEach(agent => {
-      if (agent.position) positions.add(agent.position);
+    (filteredAgents || []).forEach(agent => {
+      if (agent?.position) positions.add(agent.position);
     });
     return Array.from(positions);
-  }, [agents]);
+  }, [filteredAgents]);
 
   // Không cần filter FE nữa, BE đã trả về đúng kết quả
 
@@ -250,64 +312,24 @@ const Dashboard = () => {
         )}
         
         {/* Skeleton khi loading */}
-        {!hasError && workspace?.id && isLoadingAgents ? (
+        {!hasError && workspace?.id && (isLoadingAgents || isLoadingAllAgents) ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: pageSize }).map((_, idx) => (
               <AgentCardSkeleton key={idx} />
             ))}
           </div>
-        ) : !hasError && workspace?.id && agents.length === 0 ? (
+        ) : !hasError && workspace?.id && filteredAgents.length === 0 ? (
           <div className="text-muted-foreground text-center w-full py-8">
             No agents found
           </div>
         ) : !hasError && workspace?.id ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {(selectedFolderId == null ? agents : agents).map(agent => (
+              {filteredAgents.map(agent => (
                 <AgentCard key={agent.id} agent={agent} />
               ))}
             </div>
-            
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <Pagination className="mt-6">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={e => { e.preventDefault(); if (currentPage > 1) setPage(currentPage - 1); }}
-                      className={`${currentPage === 1 ? 'opacity-50 pointer-events-none' : ''} 
-                                 text-foreground hover:bg-muted/50`}
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }).map((_, idx) => (
-                    <PaginationItem key={idx}>
-                      <PaginationLink
-                        href="#"
-                        isActive={currentPage === idx + 1}
-                        className={cn(
-                          "pagination-link min-w-[40px] h-[40px] flex items-center justify-center rounded-md transition-colors",
-                          currentPage === idx + 1 
-                            ? "bg-primary text-white font-semibold hover:bg-primary"
-                            : "text-foreground hover:bg-primary hover:text-white"
-                        )}
-                        onClick={e => { e.preventDefault(); setPage(idx + 1); }}
-                      >
-                        {idx + 1}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={e => { e.preventDefault(); if (currentPage < totalPages) setPage(currentPage + 1); }}
-                      className={`${currentPage === totalPages ? 'opacity-50 pointer-events-none' : ''} 
-                                 text-foreground hover:bg-muted/50`}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            )}
+            {/* Pagination UI removed */}
           </>
         ) : null}
       </div>

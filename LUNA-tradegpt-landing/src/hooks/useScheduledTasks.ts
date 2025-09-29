@@ -94,11 +94,55 @@ export const useScheduledTasks = () => {
       websocketService.connect(wsUrl);
     }
 
+    // Create a MessageHandler wrapper for the callback
+    const messageHandler = (payload: unknown) => {
+      try {
+        // Parse message từ websocket
+        let wsMessage;
+        if (typeof payload === "string") {
+          wsMessage = JSON.parse(payload);
+        } else {
+          wsMessage = payload as {
+            type: string;
+            thread_id: string;
+            content: string;
+            timestamp: string;
+          };
+        }
+
+        // Parse content trong message
+        const data = JSON.parse(wsMessage.content);
+        console.log("[DEBUG] FE nhận scheduled task update:", data);
+
+        if (data.scheduled_task_id || data.task_id) {
+          // Validate status
+          const status =
+            data.status === "active" || data.status === "paused"
+              ? data.status
+              : undefined;
+
+          handleTaskUpdate({
+            workspace_id: data.workspace_id,
+            task_id: data.scheduled_task_id || data.task_id,
+            total_runs: data.total_runs,
+            successful_runs: data.successful_runs,
+            failed_runs: data.failed_runs,
+            last_run_at: data.last_run_at,
+            next_run_at: data.next_run_at,
+            thread_id: wsMessage.thread_id,
+            status,
+          });
+        }
+      } catch (error) {
+        console.error("❌ Lỗi khi xử lý scheduled task update:", error);
+      }
+    };
+
     // Đăng ký lắng nghe task updates
-    websocketService.handleScheduledTaskUpdate(handleTaskUpdate);
+    websocketService.subscribe("scheduled_task_update", messageHandler);
 
     return () => {
-      websocketService.unsubscribe("scheduled_task_update", handleTaskUpdate);
+      websocketService.unsubscribe("scheduled_task_update", messageHandler);
     };
   }, [workspace?.id, user?.id, handleTaskUpdate]);
 
@@ -173,16 +217,23 @@ export const useRunningTasksRealtime = () => {
       }
     };
 
+    // Create a MessageHandler wrapper
+    const messageHandler = (data: unknown) => {
+      if (data && typeof data === "object" && "type" in data && "content" in data) {
+        handleRunningCount(data as { type: string; content: string });
+      }
+    };
+
     // Thiết lập kết nối WebSocket nếu chưa kết nối
     const token = localStorage.getItem("token");
     if (token && websocketService.getConnectionState() !== "open") {
       websocketService.connect(`${WS_URL}?token=${token}`);
     }
 
-    websocketService.subscribe("running_count", handleRunningCount);
+    websocketService.subscribe("running_count", messageHandler);
 
     return () => {
-      websocketService.unsubscribe("running_count", handleRunningCount);
+      websocketService.unsubscribe("running_count", messageHandler);
     };
   }, [user]);
 

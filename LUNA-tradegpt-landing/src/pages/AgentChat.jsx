@@ -9,19 +9,41 @@ import {
   getThreadMessages,
   getThreadByAgentId,
   deleteThread,
+  getTaskRunsByThreadId,
 } from '../services/api';
 import Sidebar from '../components/Sidebar/Sidebar';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Skeleton } from '../components/ui/skeleton';
-import { Paperclip, ListPlus, Book, History, Lightbulb, Trash2 } from 'lucide-react';
+import { Paperclip, ListPlus, Book, History, Lightbulb, Trash2, Bell, Coins, Gift } from 'lucide-react';
+import { useInView } from 'react-intersection-observer';
 import { AgentTypingIndicator } from '../components/ui/agent-typing-indicator';
 import { websocketService } from '../services/websocket';
 import { WS_URL } from '../config/api';
 import { fakeStreamMessage } from '../utils/fakeStreaming';
 import { toast } from '../components/ui/use-toast';
 import { ChatMessageContent } from '../components/chat/ChatMessageContent';
+import { TaskHistory } from '../components/chat/TaskHistory';
 import TradingViewWidget from '../components/TradingViewWidget';
+import { LanguageToggle } from '../components/LanguageToggle';
+import { CreditPurchaseDialog } from '../components/CreditPurchaseDialog';
+import RedeemGiftcodeDialog from '../components/RedeemGiftcodeDialog';
+import { Avatar } from '../components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '../components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from '../components/ui/dialog';
 
 const AgentChat = () => {
   const navigate = useNavigate();
@@ -44,6 +66,16 @@ const AgentChat = () => {
   const [realtimeLogs, setRealtimeLogs] = React.useState({});
   const previousAgentIdRef = React.useRef(null);
   const isInitializingRef = React.useRef(false);
+  
+  // Dialog states
+  const [showCreditPurchase, setShowCreditPurchase] = React.useState(false);
+  const [showGiftcodeModal, setShowGiftcodeModal] = React.useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
+
+  // TaskHistory and AgentMessageWithLog states
+  const [taskRuns, setTaskRuns] = React.useState([]);
+  const [messageLogs, setMessageLogs] = React.useState({});
+  const [loadingLog, setLoadingLog] = React.useState({});
 
   // Debug realtimeLogs changes
   React.useEffect(() => {
@@ -52,32 +84,106 @@ const AgentChat = () => {
 
   const workspaceId = workspace?.id || localStorage.getItem('selectedWorkspace');
 
+  // AgentMessageWithLog component
+  const AgentMessageWithLog = ({
+    msg,
+    userMsgId,
+    messageLogs,
+    loadingLog,
+    handleShowLog,
+    children,
+  }) => {
+    const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
+    React.useEffect(() => {
+      if (inView && userMsgId && !messageLogs[msg.id] && !loadingLog[msg.id]) {
+        handleShowLog(msg.id, userMsgId);
+      }
+    }, [inView, userMsgId, msg.id, messageLogs, loadingLog]);
+    return (
+      <div ref={ref} key={msg.id} className="flex flex-col">
+        {children}
+      </div>
+    );
+  };
+
+  // Helper function for handling log display
+  const handleShowLog = React.useCallback(async (messageId, userMessageId) => {
+    if (loadingLog[messageId]) return;
+    
+    setLoadingLog(prev => ({ ...prev, [messageId]: true }));
+    try {
+      // Load task runs for this message/thread
+      const runs = await getTaskRunsByThreadId(user?.id, agentId);
+      setMessageLogs(prev => ({ ...prev, [messageId]: runs?.data || [] }));
+      setTaskRuns(runs?.data || []);
+    } catch (error) {
+      console.error('Error loading logs:', error);
+    } finally {
+      setLoadingLog(prev => ({ ...prev, [messageId]: false }));
+    }
+  }, [user?.id, agentId, loadingLog]);
+
+  // Helper function for retrying tasks
+  const handleRetryTask = React.useCallback(async (taskRun) => {
+    try {
+      // Implement retry logic here
+      console.log('Retrying task:', taskRun);
+      toast({ title: 'Đang thử lại task...' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Lỗi', description: 'Không thể thử lại task' });
+    }
+  }, []);
+
+  // Helper function to get/set thread ID from localStorage
+  const getStoredThreadId = React.useCallback((agentId, workspaceId) => {
+    const key = `thread_${workspaceId}_${agentId}`;
+    return localStorage.getItem(key);
+  }, []);
+
+  const setStoredThreadId = React.useCallback((agentId, workspaceId, threadId) => {
+    const key = `thread_${workspaceId}_${agentId}`;
+    if (threadId) {
+      localStorage.setItem(key, threadId);
+    } else {
+      localStorage.removeItem(key);
+    }
+  }, []);
+
   const loadOrCreateThread = React.useCallback(async (forceNew = false) => {
     if (!workspaceId || !agentId) return;
     try {
       setError('');
       console.log('[DBG] loadOrCreateThread called', { forceNew, agentId, workspaceId });
+      
+      // Check stored thread ID first (unless forcing new)
       if (!forceNew) {
+        const storedThreadId = getStoredThreadId(agentId, workspaceId);
+        if (storedThreadId) {
+          console.log('[DBG] Using stored thread_id', storedThreadId);
+          // Verify thread still exists on server
+          try {
+            const messages = await getThreadMessages(storedThreadId);
+            if (messages?.data !== undefined) {
+              return storedThreadId;
+            }
+          } catch (e) {
+            console.log('[DBG] Stored thread not found on server, removing from storage');
+            setStoredThreadId(agentId, workspaceId, null);
+          }
+        }
+
+        // Check for existing threads on server
         console.log('[DBG] checkThreadExists -> request', { agentId, workspaceId });
         const exists = await checkThreadExists(agentId, workspaceId);
         console.log('[DBG] checkThreadExists -> response', exists);
         if (exists?.exists && exists.thread_id) {
           console.log('[DBG] Using existing thread_id from checkThreadExists', exists.thread_id);
-          setThreadId(exists.thread_id);
+          setStoredThreadId(agentId, workspaceId, exists.thread_id);
           return exists.thread_id;
         }
       }
-      // Idempotent check ngay trước khi tạo mới để chống double-init
-      // Idempotent re-check ONLY when not forceNew, so the "New chat" button can truly create
-      if (!forceNew) {
-        console.log('[DBG] Re-check before createThread');
-        const exists2 = await checkThreadExists(agentId, workspaceId);
-        if (exists2?.exists && exists2.thread_id) {
-          console.log('[DBG] Found existing thread on re-check. Skip create. thread_id=', exists2.thread_id);
-          setThreadId(exists2.thread_id);
-          return exists2.thread_id;
-        }
-      }
+      
+      // Create new thread
       const title = agent?.name ? `${agent.name}` : 'New chat';
       console.log('[DBG] createThread -> request', { workspace_id: workspaceId, agent_id: agentId, title });
       const created = await createThread({
@@ -87,14 +193,19 @@ const AgentChat = () => {
       });
       const newId = created?.data?.id || created?.data?.thread_id || created?.id;
       console.log('[DBG] createThread -> response', created, 'resolvedThreadId:', newId);
-      setThreadId(newId);
+      
+      // Store the new thread ID
+      if (newId) {
+        setStoredThreadId(agentId, workspaceId, newId);
+      }
+      
       return newId;
     } catch (e) {
       console.error('[DBG] loadOrCreateThread error', e);
       setError(e?.message || 'Không thể khởi tạo hội thoại');
       return null;
     }
-  }, [workspaceId, agentId, agent?.name]);
+  }, [workspaceId, agentId, agent?.name, getStoredThreadId, setStoredThreadId]);
 
   const loadMessages = React.useCallback(async (tid) => {
     if (!tid) return;
@@ -110,6 +221,10 @@ const AgentChat = () => {
         parent_message_id: m.parent_message_id,
         artifact: m.artifact,
       }));
+      
+      // Clear previous messages first to avoid duplicates
+      setMessages([]);
+      
       if (list.length === 0 && agent?.greeting_message) {
         setMessages([
           { id: 'greeting', role: 'assistant', content: agent.greeting_message, timestamp: new Date().toISOString() },
@@ -123,32 +238,63 @@ const AgentChat = () => {
   }, [agent?.greeting_message]);
 
   const handleSend = async () => {
-    if (!input.trim() || !threadId) return;
-    // If WS not open, try to connect and abort this send
-    if (websocketService.getConnectionState() !== 'open') {
-      setError('Kết nối đang thiết lập. Vui lòng thử lại sau giây lát.');
-      return;
-    }
+    if (!input.trim()) return;
+    
     const content = input.trim();
     setInput('');
     setSending(true);
     const optimisticId = `optimistic-${Date.now()}`;
-    setMessages((prev) => [...prev, { id: optimisticId, role: 'user', content, timestamp: new Date().toISOString() }]);
+    
+    // Use current thread ID
+    let currentThreadId = threadId;
+    if (!currentThreadId) {
+      console.log('[DBG] No thread ID available, cannot send message');
+      setError('Vui lòng tạo cuộc hội thoại mới trước khi gửi tin nhắn');
+      setSending(false);
+      return;
+    }
+    
+    setMessages((prev) => {
+      const optimisticMsg = { id: optimisticId, role: 'user', content, timestamp: new Date().toISOString() };
+      // Remove greeting message when user sends first message
+      const filteredPrev = prev.filter(m => m.id !== 'greeting');
+      return [...filteredPrev, optimisticMsg];
+    });
+    
     try {
       setRealtimeLogs({});
       setIsThinking(true);
+      
+      // If WS not open, try to connect
+      if (websocketService.getConnectionState() !== 'open') {
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+        if (token) {
+          const url = `${WS_URL}?token=${token}&thread_id=${currentThreadId}`;
+          websocketService.connect(url);
+          websocketService.joinThread(currentThreadId);
+        }
+      }
+      
       websocketService.send({
         type: 'chat',
-        thread_id: threadId,
+        thread_id: currentThreadId,
         content,
         sender_type: 'user',
         sender_user_id: user?.id,
         message_id: optimisticId,
       });
+      
+      // Refresh threads list if this was the first message
+      if (!threadId) {
+        setTimeout(() => {
+          console.log('[DBG] Refreshing threads list after first message');
+          fetchThreads();
+        }, 2000);
+      }
       // Verify delivery after a short delay
       setTimeout(async () => {
         try {
-          const res = await getThreadMessages(threadId);
+          const res = await getThreadMessages(currentThreadId);
           const serverMsgs = (Array.isArray(res?.data) ? res.data : []).map((m) => ({
             id: m.id,
             role: m.sender_type === 'user' ? 'user' : 'assistant',
@@ -179,14 +325,49 @@ const AgentChat = () => {
   };
 
   const handleNewChat = async () => {
-    const tid = await loadOrCreateThread(true);
-    if (tid) {
-      setMessages([]);
-      await loadMessages(tid);
-      if (searchParams.get('newChat') === '1') {
-        searchParams.delete('newChat');
-        setSearchParams(searchParams, { replace: true });
+    try {
+      // Clear stored thread ID to force creation of new thread
+      setStoredThreadId(agentId, workspaceId, null);
+      
+      // Create new thread immediately
+      const title = agent?.name ? `${agent.name}` : 'New chat';
+      console.log('[DBG] Creating new thread for New Chat action', { workspace_id: workspaceId, agent_id: agentId, title });
+      
+      const created = await createThread({
+        workspace_id: workspaceId,
+        agent_id: agentId,
+        title,
+      });
+      
+      const newThreadId = created?.data?.id || created?.data?.thread_id || created?.id;
+      console.log('[DBG] New thread created', { newThreadId, response: created });
+      
+      if (newThreadId) {
+        // Store the new thread ID
+        setStoredThreadId(agentId, workspaceId, newThreadId);
+        
+        // Reset all chat-related states to avoid duplicates
+        setMessages([]);
+        setMessageLogs({});
+        setLoadingLog({});
+        setTaskRuns([]);
+        setError('');
+        
+        // Set new thread and load messages
+        setThreadId(newThreadId);
+        await loadMessages(newThreadId);
+        
+        // Refresh threads list to show the new thread in sidebar
+        await fetchThreads();
+        
+        if (searchParams.get('newChat') === '1') {
+          searchParams.delete('newChat');
+          setSearchParams(searchParams, { replace: true });
+        }
       }
+    } catch (error) {
+      console.error('[DBG] Error creating new chat:', error);
+      setError('Không thể tạo cuộc hội thoại mới: ' + (error?.message || 'Unknown error'));
     }
   };
 
@@ -198,6 +379,7 @@ const AgentChat = () => {
       const res = await getThreadByAgentId(agentId);
       console.log('[DBG] getThreadByAgentId -> response', res);
       const arr = Array.isArray(res?.data) ? res.data : [];
+      console.log('[DBG] Found threads:', arr.length, arr.map(t => ({ id: t.id, title: t.title, created_at: t.created_at })));
       // Sắp xếp thread theo updated_at/created_at mới nhất
       const sorted = [...arr].sort((a, b) => {
         const ta = new Date(a?.updated_at || a?.created_at || 0).getTime();
@@ -225,6 +407,7 @@ const AgentChat = () => {
 
       // Nếu đang xóa thread hiện tại, chuyển về trạng thái ban đầu
       if (threadId === threadIdToDelete) {
+        setStoredThreadId(agentId, workspaceId, null);
         setThreadId(null);
         setMessages([]);
       }
@@ -247,12 +430,19 @@ const AgentChat = () => {
 
   React.useEffect(() => {
     // Cần cả agentId và workspaceId
-    if (!agentId || !workspaceId || agentId === previousAgentIdRef.current) {
+    if (!agentId || !workspaceId) {
       return;
     }
 
-    // Ngăn chặn chạy đồng thời
+    // Ngăn chặn chạy đồng thời và duplicate initialization
     if (isInitializingRef.current) {
+      console.log('[DBG] Already initializing, skipping...');
+      return;
+    }
+
+    // Skip if same agent and already have threadId
+    if (agentId === previousAgentIdRef.current && threadId) {
+      console.log('[DBG] Same agent with existing threadId, skipping init');
       return;
     }
 
@@ -263,28 +453,80 @@ const AgentChat = () => {
     const init = async () => {
       try {
         console.log('[DBG] init AgentChat', { agentId, workspaceId });
+        
+        // Reset all states when switching agents to avoid duplicates
+        setMessages([]);
+        setMessageLogs({});
+        setLoadingLog({});
+        setTaskRuns([]);
+        setError('');
+        
         const a = await getAgentById(agentId);
         const agentData = a?.data || a;
         if (mounted) setAgent(agentData || null);
 
+        // Load threads list immediately to show in sidebar
+        const threadsList = await fetchThreads();
+        if (!mounted) return;
+
         const forceNew = searchParams.get('newChat') === '1';
         console.log('[DBG] URL param newChat', { newChat: searchParams.get('newChat'), forceNew });
-        const list = await fetchThreads();
-        // Nếu không ép tạo mới và có danh sách thread, chọn thread gần nhất
-        if (!forceNew && list && list.length > 0) {
-          const latest = list[0];
-          console.log('[DBG] Using latest thread from list', latest?.id);
-          setThreadId(latest.id);
-          if (!mounted) return;
-          await loadMessages(latest.id);
-          if (mounted) setLoading(false);
-          return; // Không tạo mới
+        
+        let tid = null;
+        
+        if (forceNew) {
+          // Force create new thread
+          tid = await loadOrCreateThread(true);
+        } else {
+          // Try to load stored thread first
+          const storedThreadId = getStoredThreadId(agentId, workspaceId);
+          if (storedThreadId) {
+            console.log('[DBG] Using stored thread_id', storedThreadId);
+            // Verify thread still exists on server
+            try {
+              const messages = await getThreadMessages(storedThreadId);
+              if (messages?.data !== undefined) {
+                tid = storedThreadId;
+              } else {
+                console.log('[DBG] Stored thread not found on server, removing from storage');
+                setStoredThreadId(agentId, workspaceId, null);
+              }
+            } catch (e) {
+              console.log('[DBG] Error verifying stored thread, removing from storage');
+              setStoredThreadId(agentId, workspaceId, null);
+            }
+          }
+          
+          // If no stored thread, try to use latest from threads list
+          if (!tid && threadsList && threadsList.length > 0) {
+            const latest = threadsList[0];
+            console.log('[DBG] Using latest thread from fetched list', latest?.id);
+            tid = latest.id;
+            setStoredThreadId(agentId, workspaceId, latest.id);
+          }
+          
+          // If still no thread, don't create one - user must click "New chat"
+          if (!tid) {
+            console.log('[DBG] No existing threads, user must click "New chat" to create one');
+            tid = null;
+          }
         }
-
-        const tid = await loadOrCreateThread(forceNew);
+        
         if (!mounted) return;
         console.log('[DBG] resolved threadId to load', tid);
-        if (tid) await loadMessages(tid);
+        if (tid) {
+          setThreadId(tid);
+          await loadMessages(tid);
+        } else {
+          // No thread yet - show greeting message and prompt user to start new chat
+          setThreadId(null);
+          if (agentData?.greeting_message) {
+            setMessages([
+              { id: 'greeting', role: 'assistant', content: agentData.greeting_message, timestamp: new Date().toISOString() },
+            ]);
+          }
+        }
+        
         if (forceNew) {
           searchParams.delete('newChat');
           setSearchParams(searchParams, { replace: true });
@@ -306,9 +548,16 @@ const AgentChat = () => {
   // charts render from per-message artifact; no global artifact load
 
   React.useEffect(() => {
-    if (!threadId) return;
+    // Only connect WebSocket if we have a threadId
+    if (!threadId) {
+      console.log('[DBG] No threadId, skipping WebSocket connection');
+      return;
+    }
+    
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!token) return;
+    
+    console.log('[DBG] WebSocket connecting to thread:', threadId);
     const url = `${WS_URL}?token=${token}&thread_id=${threadId}`;
     websocketService.connect(url);
     websocketService.joinThread(threadId);
@@ -343,10 +592,21 @@ const AgentChat = () => {
               copy[idx] = confirmed;
               return copy;
             }
-            if (!prev.some((m) => m.id === confirmed.id)) return [...prev, confirmed];
+            if (!prev.some((m) => m.id === confirmed.id)) {
+              // Remove greeting message when confirming real message
+              const filteredPrev = prev.filter(m => m.id !== 'greeting');
+              return [...filteredPrev, confirmed];
+            }
             return prev;
           });
-          if (msg.sender_type === 'agent') setIsThinking(false);
+          if (msg.sender_type === 'agent') {
+            setIsThinking(false);
+            // Refresh threads list when agent responds
+            setTimeout(() => {
+              console.log('[DBG] Refreshing threads list after agent response');
+              fetchThreads();
+            }, 1000);
+          }
           return;
         }
 
@@ -370,7 +630,9 @@ const AgentChat = () => {
             // Kiểm tra xem message đã tồn tại chưa để tránh duplicate
             setMessages((prev) => {
               if (prev.some(m => m.id === newId)) return prev;
-              return [...prev, { id: newId, role: 'assistant', content: '', timestamp: msg.created_at, isStreaming: true, artifact: msg.artifact }];
+              // Remove greeting message if it exists when real agent message comes
+              const filteredPrev = prev.filter(m => m.id !== 'greeting');
+              return [...filteredPrev, { id: newId, role: 'assistant', content: '', timestamp: msg.created_at, isStreaming: true, artifact: msg.artifact }];
             });
 
             const full = msg.message_content || msg.content || '';
@@ -395,7 +657,12 @@ const AgentChat = () => {
               });
             }, 5, 'chunk');
           } else {
-            setMessages((prev) => [...prev, { id: msg.id || `ws-${Date.now()}`, role: 'user', content: msg.message_content || msg.content, timestamp: msg.created_at }]);
+            setMessages((prev) => {
+              const newUserMsg = { id: msg.id || `ws-${Date.now()}`, role: 'user', content: msg.message_content || msg.content, timestamp: msg.created_at };
+              // Remove greeting message if user sends first message
+              const filteredPrev = prev.filter(m => m.id !== 'greeting');
+              return [...filteredPrev, newUserMsg];
+            });
           }
           return;
         }
@@ -418,6 +685,11 @@ const AgentChat = () => {
             if (last.role === 'assistant' && last.isStreaming) copy[copy.length - 1] = { ...last, isStreaming: false };
             return copy;
           });
+          // Refresh threads list when conversation is done
+          setTimeout(() => {
+            console.log('[DBG] Refreshing threads list after conversation done');
+            fetchThreads();
+          }, 500);
           return;
         }
 
@@ -480,10 +752,12 @@ const AgentChat = () => {
     websocketService.subscribe('status', onMessage);
 
     return () => {
+      console.log('[DBG] WebSocket cleanup for thread:', threadId);
       websocketService.unsubscribe('chat', onMessage);
       websocketService.unsubscribe('done', onMessage);
       websocketService.unsubscribe('credit_update', onMessage);
       websocketService.unsubscribe('status', onMessage);
+      // Don't disconnect here as it might be used by other components
     };
   }, [threadId]);
 
@@ -501,6 +775,98 @@ const AgentChat = () => {
           <div className="flex items-center gap-2">
             <button className="text-sm text-muted-foreground" onClick={() => navigate('/dashboard')}>← Dashboard</button>
             <h1 className="text-lg font-semibold text-slate-100">{agent?.name || 'Agent'}</h1>
+          </div>
+          
+          {/* Right section with action buttons */}
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Notification Bell */}
+            <Dialog open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative !bg-transparent !text-foreground hover:!bg-transparent focus-visible:!ring-0"
+                  aria-label="Thông báo"
+                >
+                  <Bell className="h-5 w-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px] md:max-w-[700px]">
+                <DialogHeader>
+                  <DialogTitle>Thông báo</DialogTitle>
+                  <DialogDescription>
+                    Các thông báo và cập nhật mới nhất
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="text-center py-8 text-muted-foreground">
+                  Chưa có thông báo nào
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Credit Display and Purchase */}
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="!bg-transparent !text-foreground hover:!bg-transparent focus-visible:!ring-0" 
+                onClick={() => setShowCreditPurchase(true)}
+              >
+                <Coins className="h-5 w-5 text-yellow-400" />
+              </Button>
+              <span className="font-semibold text-yellow-400 text-sm min-w-[48px] text-center select-none">
+                {user?.credit ?? 0}
+              </span>
+            </div>
+
+            {/* Gift Box */}
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="!bg-transparent !text-foreground hover:!bg-transparent focus-visible:!ring-0" 
+              onClick={() => setShowGiftcodeModal(true)}
+            >
+              <Gift className="h-5 w-5" />
+            </Button>
+
+            {/* Language Toggle */}
+            <LanguageToggle />
+
+            {/* User Avatar */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
+                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <div className="flex flex-col space-y-1 p-2">
+                  <p className="text-sm font-medium leading-none">{user?.name || 'User'}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email || 'user@example.com'}
+                  </p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                  Dashboard
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('access_token');
+                  navigate('/login');
+                }}>
+                  Đăng xuất
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <div className="flex-1 flex overflow-hidden">
@@ -527,7 +893,11 @@ const AgentChat = () => {
                     className={`w-full px-3 py-2 rounded-lg border transition-all duration-200 flex items-center justify-between group ${threadId === t.id ? 'bg-blue-600/20 border-blue-500/50 text-blue-300' : 'border-slate-600 text-slate-300 hover:bg-slate-800/60 hover:border-slate-500'}`}
                   >
                     <button
-                      onClick={async () => { setThreadId(t.id); await loadMessages(t.id); }}
+                      onClick={async () => { 
+                        setThreadId(t.id); 
+                        setStoredThreadId(agentId, workspaceId, t.id);
+                        await loadMessages(t.id); 
+                      }}
                       className="flex-1 text-left"
                     >
                       <div className="text-sm font-medium truncate">{t.title || 'New chat'}</div>
@@ -553,38 +923,60 @@ const AgentChat = () => {
               {loading ? (
                 <div className="text-sm text-muted-foreground">Đang tải...</div>
               ) : (
-                messages.map((m) => (
-                  <div key={m.id} className={m.role === 'user' ? 'text-right' : 'text-left'}>
-                    <div className={`inline-block px-4 py-2.5 rounded-xl max-w-[75%] ${m.role === 'user' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-800/60 text-slate-100 border border-slate-700/50'}`}>
-                      {m.role === 'assistant' ? (
-                        <ChatMessageContent
-                          content={(m.content || '').replace(/^\s*•\s+/gm, '- ')}
-                          isAgent={true}
-                          stream={m.isStreaming ?? false}
-                          images={m.image_urls}
-                        />
-                      ) : (
-                        m.content
-                      )}
-                      {m.role === 'assistant' && m.artifact && m.artifact.type === 'chart' && m.artifact.exchange_symbol && (
-                        <div className="mt-3">
-                          <div className="block w-full">
-                            <TradingViewWidget
-                              artifact={m.artifact}
-                              symbol={m.artifact.exchange_symbol}
-                              theme="dark"
-                              locale="vi"
-                              height={1000}
+                messages.map((m) => {
+                  const userMsg = messages.find(msg => msg.id < m.id && msg.role === 'user');
+                  return (
+                    <AgentMessageWithLog
+                      key={m.id}
+                      msg={m}
+                      userMsgId={userMsg?.id}
+                      messageLogs={messageLogs}
+                      loadingLog={loadingLog}
+                      handleShowLog={handleShowLog}
+                    >
+                      <div className={m.role === 'user' ? 'text-right' : 'text-left'}>
+                        <div className={`inline-block px-4 py-2.5 rounded-xl max-w-[75%] ${m.role === 'user' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-800/60 text-slate-100 border border-slate-700/50'}`}>
+                          {m.role === 'assistant' ? (
+                            <ChatMessageContent
+                              content={(m.content || '').replace(/^\s*•\s+/gm, '- ')}
+                              isAgent={true}
+                              stream={m.isStreaming ?? false}
+                              images={m.image_urls}
+                            />
+                          ) : (
+                            m.content
+                          )}
+                          {m.role === 'assistant' && m.artifact && m.artifact.type === 'chart' && m.artifact.exchange_symbol && (
+                            <div className="mt-3">
+                              <div className="block w-full">
+                                <TradingViewWidget
+                                  artifact={m.artifact}
+                                  symbol={m.artifact.exchange_symbol}
+                                  theme="dark"
+                                  locale="vi"
+                                  height={1000}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className={`text-xs text-slate-400 mt-1.5 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+                          {m.timestamp ? new Date(m.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
+                        </div>
+                        {/* TaskHistory for assistant messages */}
+                        {m.role === 'assistant' && messageLogs[m.id] && messageLogs[m.id].length > 0 && (
+                          <div className="mt-4 max-w-[75%]">
+                            <TaskHistory 
+                              runs={messageLogs[m.id]} 
+                              agentId={agentId} 
+                              onRetry={handleRetryTask}
                             />
                           </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className={`text-xs text-slate-400 mt-1.5 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                      {m.timestamp ? new Date(m.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
-                    </div>
-                  </div>
-                ))
+                        )}
+                      </div>
+                    </AgentMessageWithLog>
+                  );
+                })
               )}
               {isThinking && (
                 <div className="text-left">
@@ -602,7 +994,7 @@ const AgentChat = () => {
               <div className="max-w-4xl mx-auto">
                 <div className="relative">
                   <Textarea
-                    placeholder="Trò chuyện với nhân viên của bạn"
+                    placeholder={threadId ? "Trò chuyện với nhân viên của bạn" : "Nhấn 'New chat' để bắt đầu cuộc hội thoại mới"}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
@@ -624,6 +1016,16 @@ const AgentChat = () => {
           </main>
         </div>
       </div>
+      
+      {/* Dialog Components */}
+      <CreditPurchaseDialog 
+        open={showCreditPurchase} 
+        onOpenChange={setShowCreditPurchase} 
+      />
+      <RedeemGiftcodeDialog 
+        open={showGiftcodeModal} 
+        onOpenChange={setShowGiftcodeModal} 
+      />
     </div>
   );
 };

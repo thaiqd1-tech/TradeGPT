@@ -8,7 +8,7 @@ import {
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { useToast } from '../ui/use-toast';
-import { Agent } from '../../types';
+import { Agent } from '@/types';
 import { useSelectedWorkspace } from '../../hooks/useSelectedWorkspace';
 import { PromptTemplate, getPromptTemplatesByAgent, renderPromptTemplate } from '../../services/api';
 import { Skeleton } from '../ui/skeleton';
@@ -19,17 +19,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Search, ChevronLeft, ChevronRight, Sparkles, Copy, Eye } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
-import React from 'react';
 
-interface PromptTemplatesModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  agent: Agent | null;
-  onSelectPrompt?: (renderedPrompt: string) => void;
-}
+/**
+ * @typedef {Object} PromptTemplatesModalProps
+ * @property {boolean} open
+ * @property {function} onOpenChange
+ * @property {Agent|null} agent
+ * @property {function} [onSelectPrompt]
+ */
 
 // Helper function to get category string
-const getCategoryString = (category: any, t: any): string => {
+const getCategoryString = (category, t) => {
   if (category && typeof category === 'object' && category.String) {
     return category.String;
   }
@@ -37,8 +37,8 @@ const getCategoryString = (category: any, t: any): string => {
 };
 
 // Group templates by category
-const groupTemplatesByCategory = (templates: PromptTemplate[], t: any) => {
-  const groups: { [key: string]: PromptTemplate[] } = {};
+const groupTemplatesByCategory = (templates, t) => {
+  const groups = {};
   
   templates.forEach(template => {
     const categoryName = getCategoryString(template.category, t);
@@ -56,13 +56,13 @@ export const PromptTemplatesModal = ({
   onOpenChange,
   agent,
   onSelectPrompt
-}: PromptTemplatesModalProps) => {
+}) => {
   const { toast } = useToast();
   const { workspace } = useSelectedWorkspace();
   const { t } = useLanguage();
-  const [templates, setTemplates] = useState<PromptTemplate[]>([]);
+  const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [renderedContent, setRenderedContent] = useState('');
   const [isRendering, setIsRendering] = useState(false);
   
@@ -70,7 +70,7 @@ export const PromptTemplatesModal = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [total, setTotal] = useState(0);
   
   const limit = 10;
@@ -122,7 +122,7 @@ export const PromptTemplatesModal = ({
     }
   };
 
-  const handleSelectTemplate = async (template: PromptTemplate) => {
+  const handleSelectTemplate = async (template) => {
     if (!agent?.id || !workspace?.id) return;
     
     setSelectedTemplate(template);
@@ -164,12 +164,12 @@ export const PromptTemplatesModal = ({
     }
   };
 
-  const handleSearch = (value: string) => {
+  const handleSearch = (value) => {
     setSearchQuery(value);
     setCurrentPage(1);
   };
 
-  const handleCategoryFilter = (category: string) => {
+  const handleCategoryFilter = (category) => {
     setSelectedCategory(category === selectedCategory ? '' : category);
     setCurrentPage(1);
   };
@@ -405,7 +405,7 @@ export const PromptTemplatesModal = ({
                   </div>
                   <h3 className="font-medium mb-2">{t('promptTemplates.title')}</h3>
                   <p className="text-sm text-muted-foreground">
-                  {t('promptTemplates.selectTemplateDescription')}
+                    {t('promptTemplates.selectTemplateDescription')}
                   </p>
                 </div>
               </div>

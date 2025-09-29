@@ -1,8 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { getWorkspace, WorkspaceResponse } from '../services/api';
+import type { Workspace } from '../types';
 import React, { useState, useEffect } from "react";
 
-export const useSelectedWorkspace = () => {
+export const useSelectedWorkspace = (): {
+  workspace: Workspace | null;
+  isLoading: boolean;
+  error: unknown;
+} => {
   // Make selectedWorkspaceId reactive to localStorage changes
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
     typeof window !== "undefined" ? localStorage.getItem("selectedWorkspace") : null
@@ -48,14 +53,13 @@ export const useSelectedWorkspace = () => {
   });
 
   // Tìm workspace đang chọn từ dữ liệu danh sách
-  const workspaces =
-    workspacesData && workspacesData.data
-      ? Array.isArray(workspacesData.data)
-        ? workspacesData.data
-        : [workspacesData.data]
-      : [];
-  const workspace =
-    workspaces.find((ws) => ws.id === selectedWorkspaceId) || null;
+  const workspaces: Workspace[] = Array.isArray(workspacesData?.data)
+    ? (workspacesData!.data as Workspace[])
+    : [];
+
+  const workspace: Workspace | null = workspaces.find(
+    (ws) => ws.id === selectedWorkspaceId
+  ) || null;
 
   // Memoize the returned value to prevent unnecessary re-renders
   const memoizedValue = React.useMemo(

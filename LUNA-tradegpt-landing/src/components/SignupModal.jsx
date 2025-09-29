@@ -1,314 +1,303 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { X, Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react';
-import authService from '../services/authService';
+import { useState, useRef, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Separator } from "../components/ui/separator";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
+import { Alert } from "../components/ui/alert";
+import { registerWithEmail, verifyEmail } from "../services/api";
+import { isApiError } from "../utils/errorHandler";
+import gsap from 'gsap';
+import { useTheme } from "../hooks/useTheme";
+import { useGoogleLogin } from "../hooks/useGoogleLogin";
+import { cn } from "../lib/utils";
+import { useLanguage } from "../hooks/useLanguage";
 
-// Giả lập icon chat như trong hình
-const ChatIcon = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M21 11.5C21 16.7467 16.7467 21 11.5 21C10.5364 21 9.60477 20.8434 8.75 20.5501L4 22L5.44992 17.25C3.15659 15.3952 2 12.8952 2 10C2 4.75329 6.25329 0.5 11.5 0.5C16.7467 0.5 21 4.75329 21 11.5Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
+// Close button (SVG) to match TradeGPT minimal style
+const CloseIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
 );
 
-
-const SignupModal = ({ isOpen, onClose, onSwitchToLogin }) => {
-  const [signupForm, setSignupForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [mounted, setMounted] = useState(false);
-  
-  // Thêm state cho email verification
-  const [showVerification, setShowVerification] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-
-  useEffect(() => { setMounted(true); return () => setMounted(false); }, []);
-
-  useEffect(() => {
-    if (isOpen) { document.body.style.overflow = 'hidden'; }
-    else { document.body.style.overflow = 'unset'; }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen]);
-
-  const handleSignupSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError('');
-
-    // Validation
-    if (signupForm.password !== signupForm.confirmPassword) {
-      setError('Passwords do not match');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (signupForm.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setIsSubmitting(false);
-      return;
-    }
-
-    try {
-      const result = await authService.register(
-        signupForm.email, 
-        signupForm.password, 
-        signupForm.fullName
-      );
-      
-      // Registration thành công - hiển thị form verification
-      console.log('Registration successful:', result);
-      setShowVerification(true);
-      setError('');
-      
-    } catch (error) {
-      console.error('Registration error:', error);
-      setError(error.message || 'Registration failed. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleVerifyEmail = async (e) => {
-    e.preventDefault();
-    setIsVerifying(true);
-    setError('');
-
-    try {
-      const result = await authService.verifyEmail(signupForm.email, verificationCode);
-      
-      // Verification thành công
-      console.log('Email verification successful:', result);
-      
-      // Đóng modal và redirect
-      handleClose();
-      
-      // Redirect to post-auth checker
-      window.location.href = '/post-auth';
-      
-    } catch (error) {
-      console.error('Email verification error:', error);
-      setError(error.message || 'Email verification failed. Please try again.');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleInputChange = (field, value) => {
-    setSignupForm(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (error) setError('');
-  };
-
-  const handleClose = () => {
-    setSignupForm({ fullName: '', email: '', password: '', confirmPassword: '' });
-    setError('');
-    setShowPassword(false);
-    setShowConfirmPassword(false);
-    setShowVerification(false);
-    setVerificationCode('');
-    onClose();
-  };
-
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
-      handleClose();
-    }
-  };
-
-  const handleSwitchToLogin = () => {
-    handleClose();
-    onSwitchToLogin();
-  };
+// Modal props kept for backward compatibility with Header/Hero/CTA
+// isOpen: boolean, onClose: () => void, onSwitchToLogin?: () => void, title?: string, subtitle?: string
+const SignupModal = ({ isOpen, onClose, onSwitchToLogin, title, subtitle }) => {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { googleLoading, error: googleError, handleGoogleLogin } = useGoogleLogin();
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [showVerify, setShowVerify] = useState(false);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifyError, setVerifyError] = useState("");
+  const [verifySuccess, setVerifySuccess] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const navigate = useNavigate();
+  const registerCardRef = useRef(null);
+  const { theme } = useTheme();
+  const { t } = useLanguage();
+  const backdropRef = useRef(null);
 
   useEffect(() => {
-    const handleEscKey = (e) => { if (e.key === 'Escape' && isOpen) { handleClose(); } };
-    document.addEventListener('keydown', handleEscKey);
-    return () => document.removeEventListener('keydown', handleEscKey);
+    if (!isOpen) return;
+    if (registerCardRef.current) {
+      gsap.set(registerCardRef.current, { opacity: 0, y: 20 });
+      gsap.to(registerCardRef.current, { opacity: 1, y: 0, duration: 0.7, ease: 'power2.out', delay: 0.2 });
+    }
   }, [isOpen]);
 
-  if (!isOpen || !mounted) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose && onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
-  const modalContent = (
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await registerWithEmail({ email, password, name });
+      if (res && res.tag === "REGISTER_VERIFICATION_SENT") {
+        setSuccess("Đã gửi mã xác thực về email. Vui lòng kiểm tra email và nhập mã xác thực để hoàn tất đăng ký.");
+        setShowVerify(true);
+      } else {
+        setSuccess("Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.");
+        setShowVerify(true);
+      }
+    } catch (err) {
+      setShowVerify(false); // lỗi thì quay lại màn đăng ký
+      if (isApiError(err)) {
+        if (err.tag === "REGISTER_PASSWORD_TOO_SHORT") {
+          setError("Mật khẩu phải có ít nhất 8 ký tự");
+        } else if (err.tag === "REGISTER_EMAIL_ALREADY_EXISTS" || err.tag === "REGISTER_EMAIL_EXISTS") {
+          setError("Email đã được sử dụng");
+        } else {
+          setError(err.message || "Đã xảy ra lỗi. Vui lòng thử lại.");
+        }
+      } else {
+        setError("Đã xảy ra lỗi. Vui lòng thử lại.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const googleButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (window.google && googleButtonRef.current) {
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
+        callback: (response) => {
+          handleGoogleLogin(response.credential);
+        },
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: theme === 'dark' ? "filled_black" : "outline",
+        size: "large",
+      });
+    }
+  }, [theme, isOpen, handleGoogleLogin]);
+
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    setVerifyError("");
+    setVerifySuccess("");
+    try {
+      const res = await verifyEmail(email, verifyCode);
+      if (res.success) {
+        setVerifySuccess("Xác thực email thành công! Đang chuyển hướng...");
+        setTimeout(() => navigate("/post-auth", { replace: true }), 800);
+      } else {
+        setVerifyError("Mã xác thực không đúng hoặc đã hết hạn. Vui lòng thử lại.");
+      }
+    } catch (err) {
+      setVerifyError("Mã xác thực không đúng hoặc đã hết hạn. Vui lòng thử lại.");
+    }
+  };
+
+  const handleResendCode = async () => {
+    setVerifyError("");
+    setVerifySuccess("");
+    setResendCooldown(60);
+    try {
+      const res = await registerWithEmail({ email, password, name });
+      if (res.success) {
+        setVerifySuccess("Đã gửi lại mã xác thực về email. Vui lòng kiểm tra email.");
+      } else {
+        setVerifySuccess("Đã gửi lại mã xác thực về email. Vui lòng kiểm tra email.");
+      }
+    } catch (err) {
+      setVerifyError("Không thể gửi lại mã. Vui lòng thử lại sau.");
+    }
+  };
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  if (!isOpen) return null;
+
+  const handleBackdropClick = (e) => { if (e.target === e.currentTarget) onClose && onClose(); };
+
+  return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+      ref={backdropRef}
       onClick={handleBackdropClick}
+      className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
     >
-      {/* SỬA LỖI: 
-        1. Đã xóa class `h-full` để modal tự co giãn theo nội dung.
-        2. Thay đổi màu nền và border để khớp với ảnh.
-      */}
-      <div 
-        className="bg-[#18181B] border border-gray-700/50 rounded-2xl p-8 max-w-md w-full relative animate-fade-in shadow-2xl shadow-black/50"
-        onClick={(e) => e.stopPropagation()} // Ngăn click bên trong modal đóng modal
-      >
+      <div ref={registerCardRef} className="w-full max-w-md relative">
         <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"
+          onClick={onClose}
+          className="absolute -top-2 -right-2 bg-[#18181B] border border-gray-700/50 text-gray-400 hover:text-white rounded-full p-2 shadow z-10"
+          aria-label="Close"
         >
-          <X className="h-6 w-6" />
+          <CloseIcon className="w-5 h-5" />
         </button>
-
-        <div className="text-center mb-8">
-          <div className="bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] border border-[#00A9FF]/30 p-3 rounded-xl inline-block mb-4">
-            <ChatIcon />
-          </div>
-          <h3 className="text-2xl font-bold text-white mb-2">
-            {showVerification ? 'Verify Your Email' : 'Start Your Free Trial'}
-          </h3>
-          <p className="text-gray-400 text-sm">
-            {showVerification 
-              ? `We've sent a verification code to ${signupForm.email}. Please check your email and enter the code below.`
-              : 'Create your account and get instant access to TradeGPT\'s AI-powered investment analysis'
-            }
-          </p>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-            <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={showVerification ? handleVerifyEmail : handleSignupSubmit} className="space-y-4">
-          {!showVerification ? (
-            <>
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
-                  <input
-                    type="text"
-                    required
-                    value={signupForm.fullName}
-                    onChange={(e) => handleInputChange('fullName', e.target.value)}
-                    className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    placeholder="Enter your full name"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
-                  <input
-                    type="email"
-                    required
-                    value={signupForm.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    placeholder="Enter your email"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={signupForm.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg pl-10 pr-10 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    placeholder="••••••••••••"
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Confirm Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    required
-                    value={signupForm.confirmPassword}
-                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg pl-10 pr-10 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    placeholder="Confirm your password"
-                  />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
-                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">Verification Code</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
-                <input
-                  type="text"
-                  required
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center text-lg tracking-widest"
-                  placeholder="Enter verification code"
-                  maxLength="8"
+        <Card className="bg-[#18181B] border border-gray-700/50 rounded-2xl shadow-2xl">
+          <CardHeader className="space-y-1.5 p-6 border-b border-gray-700/50">
+            <CardTitle className="text-2xl font-bold text-center text-white">{title || 'Start Your Free Trial'}</CardTitle>
+            <CardDescription className="text-center text-gray-400 text-sm">
+              {subtitle || "Create your account and get instant access to TradeGPT's AI-powered investment analysis"}
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={handleSubmit} style={{ display: showVerify ? 'none' : undefined }}>
+            <CardContent className="space-y-6 p-6">
+              {(error || googleError) && (
+                <Alert variant="destructive" className="mb-4">
+                  {error || googleError}
+                </Alert>
+              )}
+              {success && (
+                <Alert variant="success" className="mb-4">
+                  {success}
+                </Alert>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="font-medium text-sm text-gray-300">Full Name</Label>
+                <Input 
+                  id="name" 
+                  type="text" 
+                  placeholder="John Doe" 
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                  required 
+                  disabled={loading || googleLoading}
+                  className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <p className="text-gray-500 text-xs mt-2 text-center">
-                Didn't receive the code? Check your spam folder or{' '}
-                <button type="button" className="text-blue-400 hover:text-blue-300 underline">
-                  resend code
-                </button>
-              </p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={showVerification ? isVerifying : isSubmitting}
-            className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] hover:opacity-90 text-black font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg disabled:opacity-50 flex items-center justify-center mt-6"
-          >
-            {showVerification ? (
-              isVerifying ? 'Verifying...' : 'Verify Email & Complete Registration'
-            ) : (
-              isSubmitting ? 'Creating Account...' : (
-                <>
-                  Create Account & Start Trial
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </>
-              )
-            )}
-          </button>
-        </form>
-
-        {!showVerification && (
-          <div className="mt-6 text-center">
-            <p className="text-gray-500 text-sm">
-              Already have an account?{' '}
-              <button
-                onClick={handleSwitchToLogin}
-                className="text-gray-400 hover:text-white underline font-medium"
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="font-medium text-sm text-gray-300">{t('auth.email')}</Label>
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="you@example.com" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  required 
+                  disabled={loading || googleLoading}
+                  className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex justify-end mt-1">
+                  <Link to="/forgot-password" className="text-sm text-blue-400 hover:text-blue-300 underline">
+                    {t('auth.forgotPassword')}
+                  </Link>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="font-medium text-sm text-gray-300">Password</Label>
+                <Input 
+                  id="password" 
+                  type="password" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  required 
+                  disabled={loading || googleLoading}
+                  className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] hover:opacity-90 text-black font-semibold py-3 rounded-lg transition-all"
+                size="lg"
+                disabled={loading || googleLoading}
               >
-                Sign in here
-              </button>
+                {loading ? "Creating Account..." : "Create Account & Start Trial"}
+              </Button>
+              <div className="relative pt-2 pb-1">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full bg-gray-700/50" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-[#18181B] px-2 text-gray-400">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+              <div ref={googleButtonRef} className="w-full flex justify-center" />
+            </CardContent>
+          </form>
+          {showVerify && (
+            <form onSubmit={handleVerify} className="space-y-6 p-6">
+              <Alert variant="info" className="mb-4">
+                Đã gửi mã xác thực về email <b>{email}</b>. Vui lòng kiểm tra email và nhập mã xác thực gồm 6 số để hoàn tất đăng ký.
+              </Alert>
+              {verifyError && <Alert variant="destructive">{verifyError}</Alert>}
+              {verifySuccess && <Alert variant="success">{verifySuccess}</Alert>}
+              <div className="space-y-1.5">
+                <Label htmlFor="verifyCode" className="font-medium text-sm text-gray-300">Mã xác thực</Label>
+                <Input
+                  id="verifyCode"
+                  type="text"
+                  placeholder="Nhập mã xác thực 6 số"
+                  value={verifyCode}
+                  onChange={e => setVerifyCode(e.target.value)}
+                  required
+                  maxLength={6}
+                  minLength={6}
+                  pattern="[0-9]{6}"
+                  className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <Button type="submit" className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] hover:opacity-90 text-black font-semibold py-3 rounded-lg transition-all" size="lg">
+                Xác thực email & hoàn tất
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mt-2"
+                onClick={handleResendCode}
+                disabled={resendCooldown > 0}
+              >
+                {resendCooldown > 0 ? `Gửi lại mã (${resendCooldown}s)` : "Gửi lại mã"}
+              </Button>
+            </form>
+          )}
+          <CardFooter className="flex justify-center p-6 border-t border-gray-700/50 rounded-b-2xl">
+            <p className="text-sm text-gray-400">
+              Already have an account?{" "}
+              {onSwitchToLogin ? (
+                <button onClick={onSwitchToLogin} className="font-medium text-blue-400 hover:text-blue-300 underline">
+                  Sign in
+                </button>
+              ) : (
+                <Link to="/login" className="font-medium text-blue-400 hover:text-blue-300 underline">Sign in</Link>
+              )}
             </p>
-          </div>
-        )}
-
-        <p className="text-gray-500 text-xs text-center mt-4">
-          By creating an account, you agree to our{' '}
-          <a href="#" className="text-gray-400 hover:text-white underline">
-            Terms of Service
-          </a> and <a href="#" className="text-gray-400 hover:text-white underline">
-            Privacy Policy
-          </a>
-        </p>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
-
-  return createPortal(modalContent, document.body);
-}
+};
 
 export default SignupModal;

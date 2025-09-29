@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { createWorkspace } from '../services/api';
 
 const OnboardingCreateWorkspace = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [form, setForm] = React.useState({
     name: '',
     businessType: '',
@@ -28,6 +30,9 @@ const OnboardingCreateWorkspace = () => {
       if (wsId) {
         localStorage.setItem('selectedWorkspace', wsId);
         window.dispatchEvent(new Event('workspaceChanged'));
+        // Làm tươi cache danh sách workspace để các màn sau đọc được ngay
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+        // Điều hướng tiếp tục onboarding
         navigate('/onboarding/company-website', { replace: true });
       } else {
         setError('Tạo workspace thất bại.');

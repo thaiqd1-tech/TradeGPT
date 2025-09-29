@@ -1,22 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import React from 'react';
 
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "../ui/accordion"
-import { Badge } from "../ui/badge"
-import { Code, FileVideo, Loader2, CheckCircle2, XCircle, Settings, RefreshCw, FileImage } from "lucide-react"
-import { TaskRun, VideoOutputItem, TaskOutputData } from "../../types"
-import { useNavigate } from "react-router-dom"
-import { Button } from "../ui/button"
-import { useEffect } from "react"
-import { API_BASE_URL } from "../../config/api"
-import ReactMarkdown from 'react-markdown'
+} from "../ui/accordion";
+import { Badge } from "../ui/badge";
+import { Code, FileVideo, Loader2, CheckCircle2, XCircle, Settings, RefreshCw, FileImage } from "lucide-react";
+import { TaskRun, VideoOutputItem, TaskOutputData } from "../../types";
+import { useNavigate } from "react-router-dom";
+import { Button } from "../ui/button";
+import { useEffect } from "react";
+import { API_BASE_URL } from "../../config/api";
+import ReactMarkdown from 'react-markdown';
 
-// Component hiển thị huy hiệu trạng thái (giữ nguyên)
-const StatusBadge = ({ status }: { status: string }) => {
+// Component hiển thị huy hiệu trạng thái
+const StatusBadge = ({ status }) => {
   switch (status.toLowerCase()) {
     case 'completed':
       return <Badge variant="success" className="flex items-center gap-1.5"><CheckCircle2 size={14} /> COMPLETED</Badge>;
@@ -31,11 +32,10 @@ const StatusBadge = ({ status }: { status: string }) => {
   }
 };
 
-// Component chính đã được cập nhật
-export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agentId: string, onRetry: (run: TaskRun) => void }) => {
+// Component chính
+export const TaskHistory = ({ runs, agentId, onRetry }) => {
   const navigate = useNavigate();
 
-  // Debug output_data và force render khi runs thay đổi
   useEffect(() => {
     if (runs && runs.length > 0) {
       console.log(`[TaskHistory] Nhận được ${runs.length} task runs, xử lý hiển thị...`);
@@ -43,27 +43,22 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
         console.log(`Run ID ${run.id} output_data:`, JSON.stringify(run.output_data));
         console.log(`Run status: ${run.status}, updated_at: ${run.updated_at}`);
         
-        // Kiểm tra MIME types và định dạng
         if (run.output_data && typeof run.output_data === 'object') {
-          const checkMedia = (data: any) => {
-            // Kiểm tra trường định dạng media
+          const checkMedia = (data) => {
             const mediaPaths = [];
             
-            // Xác định các trường có thể chứa đường dẫn media
-            const checkForMediaPath = (obj: any, path: string = '') => {
+            const checkForMediaPath = (obj, path = '') => {
               if (!obj || typeof obj !== 'object') return;
               
               Object.entries(obj).forEach(([key, value]) => {
                 const currentPath = path ? `${path}.${key}` : key;
                 
-                // Kiểm tra nếu là đường dẫn file
                 if (typeof value === 'string' && 
                     (key.includes('url') || key.includes('path') || key.includes('file')) && 
                     (value.startsWith('http') || value.startsWith('/') || value.startsWith('gs://'))) {
                   mediaPaths.push({ path: currentPath, value });
                 }
                 
-                // Đệ quy kiểm tra các đối tượng con
                 if (value && typeof value === 'object' && !Array.isArray(value)) {
                   checkForMediaPath(value, currentPath);
                 }
@@ -75,11 +70,9 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
             console.log('Detected media paths:', mediaPaths);
           };
           
-          // Nếu là mảng
           if (Array.isArray(run.output_data)) {
             run.output_data.forEach(item => checkMedia(item));
           } else {
-            // Nếu là đối tượng đơn
             checkMedia(run.output_data);
           }
         }
@@ -87,37 +80,29 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
     }
   }, [runs]);
 
-  // Hàm kiểm tra nếu đường dẫn là Google Storage URL
-  const isGoogleStorageUrl = (url: string): boolean => {
+  const isGoogleStorageUrl = (url) => {
     return typeof url === 'string' && url.startsWith('gs://');
   };
 
-  // Hàm tạo URL đầy đủ từ file_url
-  const getFullUrl = (path: string): string => {
-    // Ghi log để debug
+  const getFullUrl = (path) => {
     console.log('Building URL from path:', path);
     
-    // Kiểm tra null hoặc undefined
     if (!path) {
       console.error('Path is null or undefined');
       return '';
     }
     
-    // Nếu là URL đầy đủ, trả về nguyên gốc
     if (path.startsWith('http://') || path.startsWith('https://')) {
       console.log('Path is already a full URL');
       return path;
     }
 
-    // Xử lý đường dẫn từ Google Cloud Storage
     if (path.startsWith('gs://')) {
       console.log('Converting Google Storage path to HTTP URL');
-      // Bạn cần thiết lập cấu hình URL GSC tương ứng
       const bucketPath = path.replace('gs://', '');
       return `https://storage.googleapis.com/${bucketPath}`;
     }
     
-    // Nếu là đường dẫn tương đối, thêm base URL vào
     let fullUrl;
     if (path.startsWith('/')) {
       fullUrl = `${API_BASE_URL}${path}`;
@@ -129,9 +114,7 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
     return fullUrl;
   };
 
-  // Hàm render output custom UI cho từng loại dữ liệu
-  const renderOutput = (output: any) => {
-    // Nếu là link gradio file
+  const renderOutput = (output) => {
     if (typeof output === "string" && output.includes("/gradio_api/file=")) {
       const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(output);
       if (isImage) {
@@ -159,7 +142,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       }
     }
 
-    // Nếu là object chỉ có 1 key là agent_res và là link ảnh gradio
     if (
       typeof output === "object" &&
       output !== null &&
@@ -180,7 +162,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       );
     }
 
-    // Nếu là link Google Drive
     if (typeof output === "string" && output.includes("drive.google.com")) {
       return (
         <a
@@ -199,7 +180,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       );
     }
 
-    // Nếu là HTML
     if (typeof output === "string" && output.trim().startsWith("<") && output.trim().endsWith(">")) {
       return (
         <div
@@ -209,7 +189,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       );
     }
 
-    // Nếu là markdown
     if (typeof output === "string" && /[*_`#[\]]/.test(output)) {
       return (
         <div className="prose max-w-none prose-invert whitespace-normal">
@@ -218,7 +197,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       );
     }
 
-    // Nếu là ảnh
     if (typeof output === "string" && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(output)) {
       return (
         <div className="flex flex-col items-center gap-2">
@@ -228,7 +206,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       );
     }
 
-    // Nếu là video
     if (typeof output === "string" && /\.(mp4|webm|ogg)$/i.test(output)) {
       return (
         <div className="flex justify-center w-full">
@@ -237,7 +214,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       );
     }
 
-    // Nếu là link
     if (typeof output === "string" && /^https?:\/\//.test(output)) {
       return (
         <a href={output} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
@@ -246,7 +222,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       );
     }
 
-    // Nếu là file (pdf, doc, ...)
     if (typeof output === "string" && /\.(pdf|docx?|xlsx?|pptx?)$/i.test(output)) {
       return (
         <a href={output} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-500 underline">
@@ -255,9 +230,7 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       );
     }
 
-    // Nếu là object có trường đặc biệt
     if (typeof output === "object" && output !== null) {
-      // Nếu có trường "video_url" là video
       if (output.video_url && typeof output.video_url === "string" && /\.(mp4|webm|ogg)$/i.test(output.video_url)) {
         return (
           <div className="flex justify-center w-full">
@@ -265,15 +238,12 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
           </div>
         );
       }
-      // Nếu có trường "content" là HTML/text
       if (output.content) {
         return renderOutput(output.content);
       }
-      // Nếu có trường "url" là ảnh/video/link
       if (output.url) {
         return renderOutput(output.url);
       }
-      // Nếu là mảng
       if (Array.isArray(output)) {
         return (
           <div className="space-y-2">
@@ -285,13 +255,11 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
           </div>
         );
       }
-      // Nếu là object thông thường: clean UI
       const entries = Object.entries(output);
       const allEmpty = entries.every(([_, value]) => !value || (typeof value === 'string' && value.trim() === ''));
       if (allEmpty) {
         return <div className="text-muted-foreground italic">Không có dữ liệu hiển thị.</div>;
       }
-      // Nếu chỉ có 1 trường: hiển thị label nhỏ phía trên, value bọc box đẹp
       if (entries.length === 1) {
         const [key, value] = entries[0];
         return (
@@ -305,7 +273,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
           </div>
         );
       }
-      // Nếu nhiều trường: bảng style nhẹ, key đậm nhỏ, value wrap tốt
       return (
         <table className="min-w-full text-xs border mt-2 border-border bg-muted/30 rounded">
           <tbody>
@@ -324,7 +291,6 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       );
     }
 
-    // Nếu là text thông thường
     return <div className="text-foreground whitespace-normal">{String(output)}</div>;
   };
 
@@ -333,7 +299,7 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
       <div className="text-center text-muted-foreground py-8">
         <p>Chưa có lịch sử thực thi nào.</p>
       </div>
-    )
+    );
   }
  
   return (
@@ -458,5 +424,5 @@ export const TaskHistory = ({ runs, agentId, onRetry }: { runs: TaskRun[], agent
         ))}
       </Accordion>
     </div>
-  )
-}
+  );
+};

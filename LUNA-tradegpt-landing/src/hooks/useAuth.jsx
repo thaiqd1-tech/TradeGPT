@@ -1,22 +1,16 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api';
 import { jwtDecode } from 'jwt-decode';
-import authService from '../services/authService';
+import { useQueryClient } from '@tanstack/react-query';
 
-const AuthContext = createContext();
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+const AuthContext = createContext(undefined);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [intervalId, setIntervalId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isTokenExpired, setIsTokenExpired] = useState(false);
+  const queryClient = useQueryClient();
 
   const checkTokenExpiration = (token) => {
     try {
@@ -28,228 +22,237 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshToken = async () => {
+    try {
+      const storedRefreshToken = localStorage.getItem('refresh_token');
+      if (!storedRefreshToken) return false;
+
+      const res = await fetch(API_ENDPOINTS.auth.refresh, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refresh_token: storedRefreshToken
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success && res.ok) {
+        const token = data.token || data.access_token;
+        
+        if (token && data.refresh_token) {
+          localStorage.setItem('token', token);
+          localStorage.setItem('refresh_token', data.refresh_token);
+          
+          if (data.user) {
+            const existingUserStr = localStorage.getItem('user');
+            let existingUserData = {};
+            if (existingUserStr) {
+              try {
+                existingUserData = JSON.parse(existingUserStr);
+              } catch (e) {
+                console.error("Failed to parse existing user data from localStorage:", e);
+              }
+            }
+
+            const mergedUserData = { ...existingUserData, ...data.user };
+            
+            try {
+              const decodedToken = jwtDecode(token);
+              mergedUserData.role = decodedToken.role;
+            } catch (e) {
+              console.error("Failed to decode token for role:", e);
+              mergedUserData.role = null;
+            }
+            localStorage.setItem('user', JSON.stringify(mergedUserData));
+            setUser(mergedUserData);
+          }
+          
+          setIsTokenExpired(false);
+          return true;
+        } else {
+          console.error('Refresh token response missing required fields:', { token, refresh_token: data.refresh_token });
+          logout();
+          return false;
+        }
+      } else {
+        console.error('Refresh token failed:', data);
+        logout();
+        return false;
+      }
+    } catch (err) {
+      console.error('Lỗi khi refresh token:', err);
+      logout();
+      return false;
+    }
+  };
+
   const checkAndRefreshToken = async () => {
-    const token = authService.getAccessToken();
+    const token = localStorage.getItem('token');
     if (!token) return;
+
     try {
       const decoded = jwtDecode(token);
       const currentTime = Date.now() / 1000;
       const timeUntilExpiry = decoded.exp - currentTime;
+
       if (timeUntilExpiry < 300) {
-        await authService.refreshToken();
+        console.log('Token sắp hết hạn, đang cố gắng refresh...');
+        await refreshToken();
       }
     } catch (err) {
       console.error('Lỗi khi kiểm tra token để refresh:', err);
-      // Nếu lỗi decode hoặc refresh thất bại ở đây, tiến hành logout
       logout();
     }
   };
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkAuthStatus = () => {
-      try {
-        const token = authService.getAccessToken();
-        const userData = authService.getCurrentUser();
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      const storedRefreshToken = localStorage.getItem('refresh_token');
+      const userStr = localStorage.getItem('user');
+      
+      if (token && userStr) {
+        const isExpired = checkTokenExpiration(token);
+        setIsTokenExpired(isExpired);
         
-        if (token && userData) {
-          const expired = checkTokenExpiration(token);
-          if (expired) {
-            // Nếu đã hết hạn, thử refresh ngay
-            authService.refreshToken()
-              .then((res) => {
-                setUser(userData);
-                setIsAuthenticated(true);
-              })
-              .catch(() => {
-                authService.clearAuthData();
-                setUser(null);
-                setIsAuthenticated(false);
-              })
-              .finally(() => setIsLoading(false));
-            return;
-          } else {
-            setUser(userData);
-            setIsAuthenticated(true);
+        if (isExpired) {
+          const success = await refreshToken();
+          if (!success) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            setUser(null);
           }
         } else {
-          // Clear any invalid data
-          authService.clearAuthData();
-          setUser(null);
-          setIsAuthenticated(false);
+          const userData = JSON.parse(userStr);
+          try {
+            const decodedToken = jwtDecode(token);
+            userData.role = decodedToken.role;
+          } catch (e) {
+            console.error("Failed to decode token for role:", e);
+            userData.role = null;
+          }
+          setUser(userData);
         }
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-        authService.clearAuthData();
-        setUser(null);
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
       }
+      setLoading(false);
     };
 
-    checkAuthStatus();
-    // Thiết lập interval kiểm tra token mỗi 60s
-    const id = setInterval(checkAndRefreshToken, 60000);
-    setIntervalId(id);
-    return () => {
-      if (id) clearInterval(id);
-    };
+    initializeAuth();
+
+    const interval = setInterval(checkAndRefreshToken, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const login = async (email, password) => {
+    setLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      const result = await authService.login(email, password);
+      const res = await fetch(API_ENDPOINTS.auth.login, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Đăng nhập thất bại');
       
-      setUser(result.user);
-      setIsAuthenticated(true);
+      const token = data.token || data.access_token;
       
-      return result;
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const register = async (email, password, name) => {
-    try {
-      setIsLoading(true);
-      const result = await authService.register(email, password, name);
-      
-      // Không set user ngay lập tức vì cần verify email trước
-      // setUser(result.user);
-      // setIsAuthenticated(true);
-      
-      return result;
-    } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const verifyEmail = async (email, code) => {
-    try {
-      setIsLoading(true);
-      const result = await authService.verifyEmail(email, code);
-      
-      setUser(result.user);
-      setIsAuthenticated(true);
-      
-      return result;
-    } catch (error) {
-      console.error('Email verification error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const googleLogin = async (idToken) => {
-    try {
-      setIsLoading(true);
-      const result = await authService.googleLogin(idToken);
-      
-      // Đồng bộ role từ token để UI hoạt động đúng
-      try {
-        const token = authService.getAccessToken();
-        if (token && result && result.user) {
-          const decoded = jwtDecode(token);
-          const role = decoded && decoded.role ? decoded.role : result.user.role;
-          const mergedUser = { ...result.user, role };
-          // Lưu lại user đã có role
-          try {
-            localStorage.setItem('user', JSON.stringify(mergedUser));
-          } catch (_) {}
-          setUser(mergedUser);
-        } else if (result && result.user) {
-          setUser(result.user);
+      if (token && data.refresh_token && data.user) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('refresh_token', data.refresh_token);
+        
+        try {
+          const decodedToken = jwtDecode(token);
+          data.user.role = decodedToken.role;
+        } catch (e) {
+          console.error("Failed to decode token for role:", e);
+          data.user.role = null;
         }
-      } catch (e) {
-        // Nếu decode lỗi, fallback dùng user trả về
-        setUser(result.user);
+
+        localStorage.setItem('user', JSON.stringify(data.user));
+        setUser(data.user);
+        setIsTokenExpired(false);
+        
+        queryClient.invalidateQueries();
+      } else {
+        throw new Error('Không nhận được token hoặc user từ server');
       }
-      setIsAuthenticated(true);
-      
-      return result;
-    } catch (error) {
-      console.error('Google login error:', error);
-      throw error;
+    } catch (err) {
+      if (err instanceof Error) setError(err.message);
+      else setError('Đăng nhập thất bại');
+      throw err;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const logout = async () => {
+  const logout = async (navigate) => {
     try {
-      setIsLoading(true);
-      await authService.logout();
+      const refreshToken = localStorage.getItem('refresh_token');
+      const token = localStorage.getItem('token');
+      if (refreshToken && token) {
+        await fetch(API_ENDPOINTS.auth.logout, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+      }
+    } catch (err) {
+      console.error('Lỗi khi logout:', err);
+    } finally {
+      queryClient.clear();
+      
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('selectedWorkspace');
       
       setUser(null);
-      setIsAuthenticated(false);
-      
-      // Redirect to home page
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Still clear local state even if API call fails
-      setUser(null);
-      setIsAuthenticated(false);
-      window.location.href = '/';
-    } finally {
-      setIsLoading(false);
+      setIsTokenExpired(false);
+      if (navigate) navigate("/", { replace: true });
     }
   };
 
-  const refreshToken = async () => {
-    try {
-      const result = await authService.refreshToken();
-      // Nếu backend trả user mới, cập nhật lại
-      if (result && result.user) {
-        setUser(result.user);
-        setIsAuthenticated(true);
-      }
-      return result;
-    } catch (error) {
-      console.error('Token refresh error:', error);
-      // If refresh fails, logout user
-      logout();
-      throw error;
-    }
+  const updateUser = (newUser) => {
+    setUser(newUser);
+    const updatedUser = { ...JSON.parse(localStorage.getItem('user') || '{}'), ...newUser };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
-  const value = {
-    user,
-    isAuthenticated,
-    isLoading,
-    login,
-    register,
-    verifyEmail,
-    googleLogin,
-    logout,
-    refreshToken,
-    updateUser: (newUser) => {
-      try {
-        const existing = localStorage.getItem('user');
-        const existingUser = existing ? JSON.parse(existing) : {};
-        const merged = { ...existingUser, ...newUser };
-        localStorage.setItem('user', JSON.stringify(merged));
-        setUser(merged);
-        setIsAuthenticated(true);
-      } catch (_) {
-        setUser(newUser);
-        setIsAuthenticated(true);
-      }
-    },
-  };
+  const hasWorkspace = Boolean(user?.workspace?.id);
+  const canCreateAgent = user?.role !== 'user';
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      error, 
+      login, 
+      logout, 
+      updateUser, 
+      hasWorkspace,
+      isTokenExpired,
+      refreshToken,
+      role: user?.role,
+      canCreateAgent,
+    }}>
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

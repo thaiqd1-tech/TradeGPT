@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { createWorkspaceProfile, getWorkspaceProfile, updateWorkspaceProfile } from '../services/api';
 
 const OnboardingWorkspaceProfile = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const workspaceId = typeof window !== 'undefined' ? localStorage.getItem('selectedWorkspace') : null;
   const [form, setForm] = React.useState({
     brand_name: '',
@@ -65,7 +67,10 @@ const OnboardingWorkspaceProfile = () => {
       } else {
         await createWorkspaceProfile(payload);
       }
-      navigate('/dashboard', { replace: true });
+      // Làm tươi cache workspaces để Dashboard đọc được ngay
+      queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+      // Điều hướng qua post-auth để đảm bảo selectedWorkspace hợp lệ và route đúng
+      navigate('/post-auth', { replace: true });
     } catch (e) {
       setError(e?.message || 'Không thể lưu thông tin workspace');
     } finally {

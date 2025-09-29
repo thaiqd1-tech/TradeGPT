@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import authService from '../services/authService';
+import { forgotPassword, verifyForgotPassword, resetPassword } from '../services/api';
 import { useGoogleLogin } from '../hooks/useGoogleLogin';
 
 // Giả lập icon chat như trong hình
@@ -14,6 +15,12 @@ const ChatIcon = () => (
 const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [mode, setMode] = useState('login'); // 'login' | 'forgot' | 'verify' | 'reset'
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [verifyCode, setVerifyCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [flowLoading, setFlowLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -48,8 +55,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
         });
         window.google.accounts.id.renderButton(googleButtonRef.current, {
           theme: 'outline',
-          size: 'large',
-          width: '100%'
+          size: 'large'
         });
       } catch (e) {
         console.warn('Failed to initialize Google button', e);
@@ -124,6 +130,8 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
         // Xử lý các lỗi cụ thể
         if (error.message.includes('Invalid credentials')) {
           errorMessage = 'Email hoặc mật khẩu không đúng. Nếu bạn vừa đăng ký, vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.';
+        } else if (error.message.toLowerCase().includes('oauth') || error.message.toLowerCase().includes('google')) {
+          errorMessage = 'Tài khoản này đã liên kết Google. Vui lòng đăng nhập bằng Google hoặc đặt lại mật khẩu.';
         } else if (error.message.includes('Email hoặc mật khẩu không đúng')) {
           errorMessage = 'Email hoặc mật khẩu không đúng. Nếu bạn vừa đăng ký, vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.';
         }
@@ -149,6 +157,11 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
     setLoginForm({ email: '', password: '' });
     setError('');
     setShowPassword(false);
+    setMode('login');
+    setForgotEmail('');
+    setVerifyCode('');
+    setNewPassword('');
+    setConfirmPassword('');
     onClose();
   };
 
@@ -205,6 +218,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
           </div>
         )}
 
+        {mode === 'login' && (
         <form onSubmit={handleLoginSubmit} className="space-y-4">
           <div>
             <label className="block text-gray-300 text-sm font-medium mb-2">Email Address</label>
@@ -255,7 +269,151 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
               </>
             )}
           </button>
+
+          <div className="mt-3 text-center">
+            <button
+              type="button"
+              onClick={() => { setMode('forgot'); setError(''); setFlowLoading(false); setForgotEmail(loginForm.email || ''); }}
+              className="text-gray-400 hover:text-white underline text-sm"
+            >
+              Quên mật khẩu?
+            </button>
+          </div>
         </form>
+        )}
+
+        {mode === 'forgot' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">Email đăng ký</label>
+              <input
+                type="email"
+                required
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                placeholder="you@example.com"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={flowLoading || !forgotEmail}
+              onClick={async () => {
+                try {
+                  setFlowLoading(true);
+                  setError('');
+                  await forgotPassword(forgotEmail);
+                  setMode('verify');
+                } catch (e) {
+                  setError(e?.message || 'Không thể gửi mã. Vui lòng thử lại.');
+                } finally {
+                  setFlowLoading(false);
+                }
+              }}
+              className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-black font-semibold py-3 rounded-lg disabled:opacity-50"
+            >
+              {flowLoading ? 'Đang gửi...' : 'Gửi mã xác thực'}
+            </button>
+            <button type="button" onClick={() => setMode('login')} className="w-full bg-transparent border border-gray-600/60 text-white font-semibold py-3 rounded-lg hover:bg-white/10">
+              Quay lại đăng nhập
+            </button>
+          </div>
+        )}
+
+        {mode === 'verify' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">Mã xác thực (OTP)</label>
+              <input
+                type="text"
+                required
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value)}
+                className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                placeholder="Nhập mã 6 số"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={flowLoading || !verifyCode}
+              onClick={async () => {
+                try {
+                  setFlowLoading(true);
+                  setError('');
+                  const res = await verifyForgotPassword(forgotEmail, verifyCode);
+                  if (res && res.success === false) throw new Error(res.message || 'Mã không hợp lệ');
+                  setMode('reset');
+                } catch (e) {
+                  setError(e?.message || 'Xác thực mã thất bại.');
+                } finally {
+                  setFlowLoading(false);
+                }
+              }}
+              className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-black font-semibold py-3 rounded-lg disabled:opacity-50"
+            >
+              {flowLoading ? 'Đang kiểm tra...' : 'Xác thực mã'}
+            </button>
+            <button type="button" onClick={() => setMode('forgot')} className="w-full bg-transparent border border-gray-600/60 text-white font-semibold py-3 rounded-lg hover:bg-white/10">
+              Nhập lại email
+            </button>
+          </div>
+        )}
+
+        {mode === 'reset' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">Mật khẩu mới</label>
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                placeholder="Ít nhất 8 ký tự"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">Nhập lại mật khẩu</label>
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                placeholder="Gõ lại mật khẩu"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={flowLoading || !newPassword || newPassword !== confirmPassword}
+              onClick={async () => {
+                if (newPassword.length < 8) {
+                  setError('Mật khẩu phải có ít nhất 8 ký tự.');
+                  return;
+                }
+                try {
+                  setFlowLoading(true);
+                  setError('');
+                  const res = await resetPassword(forgotEmail, verifyCode, newPassword);
+                  if (res && res.success === false) throw new Error(res.message || 'Không thể đặt lại mật khẩu');
+                  // Sau khi reset thành công, quay lại login
+                  setMode('login');
+                  setLoginForm({ email: forgotEmail, password: '' });
+                } catch (e) {
+                  setError(e?.message || 'Không thể đặt lại mật khẩu.');
+                } finally {
+                  setFlowLoading(false);
+                }
+              }}
+              className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-black font-semibold py-3 rounded-lg disabled:opacity-50"
+            >
+              {flowLoading ? 'Đang lưu...' : 'Đặt lại mật khẩu'}
+            </button>
+            <button type="button" onClick={() => setMode('login')} className="w-full bg-transparent border border-gray-600/60 text-white font-semibold py-3 rounded-lg hover:bg-white/10">
+              Quay lại đăng nhập
+            </button>
+          </div>
+        )}
 
         {/* Google Login */}
         <div className="mt-4">
