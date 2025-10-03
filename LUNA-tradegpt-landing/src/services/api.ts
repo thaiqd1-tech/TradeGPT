@@ -2105,8 +2105,19 @@ export const getKnowledgeDetail = async (id: string): Promise<any> => {
 export const forgotPassword = async (email: string) => {
   const res = await fetch(API_ENDPOINTS.auth.forgotPassword, {
     method: "POST",
+    headers: { 
+      "Accept": "*/*",
+      "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
+      "Content-Type": "text/plain;charset=UTF-8",
+      "Origin": "https://superbai.io",
+      "Referer": "https://superbai.io/forgot-password",
+      "User-Agent": navigator.userAgent
+    },
     body: JSON.stringify({ email }),
   });
+  if (!res.ok) {
+    await handleApiError(res);
+  }
   return res.json();
 };
 
@@ -2125,7 +2136,14 @@ export const verifyEmail = async (email: string, code: string) => {
 export const verifyForgotPassword = async (email: string, code: string) => {
   const res = await fetch(API_ENDPOINTS.auth.verifyForgotPassword, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Accept": "*/*",
+      "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
+      "Content-Type": "text/plain;charset=UTF-8",
+      "Origin": "https://superbai.io",
+      "Referer": "https://superbai.io/forgot-password",
+      "User-Agent": navigator.userAgent
+    },
     body: JSON.stringify({ email, code }),
   });
   return res.json();
@@ -2134,7 +2152,14 @@ export const verifyForgotPassword = async (email: string, code: string) => {
 export const resetPassword = async (email: string, code: string, new_password: string) => {
   const res = await fetch(API_ENDPOINTS.auth.resetPassword, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Accept": "*/*",
+      "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
+      "Content-Type": "text/plain;charset=UTF-8",
+      "Origin": "https://superbai.io",
+      "Referer": "https://superbai.io/forgot-password",
+      "User-Agent": navigator.userAgent
+    },
     body: JSON.stringify({ email, code, new_password }),
   });
   return res.json();

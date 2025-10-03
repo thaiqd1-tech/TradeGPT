@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
-import { forgotPassword, verifyForgotPassword, resetPassword } from '../services/api';
 import { useGoogleLogin } from '../hooks/useGoogleLogin';
 
 // Giả lập icon chat như trong hình
@@ -15,17 +15,12 @@ const ChatIcon = () => (
 const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [mode, setMode] = useState('login'); // 'login' | 'forgot' | 'verify' | 'reset'
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [verifyCode, setVerifyCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [flowLoading, setFlowLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
   const { handleGoogleLogin, googleLoading } = useGoogleLogin();
   const googleButtonRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const init = () => {
@@ -157,11 +152,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
     setLoginForm({ email: '', password: '' });
     setError('');
     setShowPassword(false);
-    setMode('login');
-    setForgotEmail('');
-    setVerifyCode('');
-    setNewPassword('');
-    setConfirmPassword('');
     onClose();
   };
 
@@ -218,7 +208,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
           </div>
         )}
 
-        {mode === 'login' && (
         <form onSubmit={handleLoginSubmit} className="space-y-4">
           <div>
             <label className="block text-gray-300 text-sm font-medium mb-2">Email Address</label>
@@ -273,147 +262,17 @@ const LoginModal = ({ isOpen, onClose, onSwitchToSignup }) => {
           <div className="mt-3 text-center">
             <button
               type="button"
-              onClick={() => { setMode('forgot'); setError(''); setFlowLoading(false); setForgotEmail(loginForm.email || ''); }}
+              onClick={() => {
+                handleClose();
+                navigate('/forgot-password');
+              }}
               className="text-gray-400 hover:text-white underline text-sm"
             >
-              Quên mật khẩu?
+              Forgot your password?
             </button>
           </div>
         </form>
-        )}
 
-        {mode === 'forgot' && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">Email đăng ký</label>
-              <input
-                type="email"
-                required
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                placeholder="you@example.com"
-              />
-            </div>
-            <button
-              type="button"
-              disabled={flowLoading || !forgotEmail}
-              onClick={async () => {
-                try {
-                  setFlowLoading(true);
-                  setError('');
-                  await forgotPassword(forgotEmail);
-                  setMode('verify');
-                } catch (e) {
-                  setError(e?.message || 'Không thể gửi mã. Vui lòng thử lại.');
-                } finally {
-                  setFlowLoading(false);
-                }
-              }}
-              className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-black font-semibold py-3 rounded-lg disabled:opacity-50"
-            >
-              {flowLoading ? 'Đang gửi...' : 'Gửi mã xác thực'}
-            </button>
-            <button type="button" onClick={() => setMode('login')} className="w-full bg-transparent border border-gray-600/60 text-white font-semibold py-3 rounded-lg hover:bg-white/10">
-              Quay lại đăng nhập
-            </button>
-          </div>
-        )}
-
-        {mode === 'verify' && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">Mã xác thực (OTP)</label>
-              <input
-                type="text"
-                required
-                value={verifyCode}
-                onChange={(e) => setVerifyCode(e.target.value)}
-                className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                placeholder="Nhập mã 6 số"
-              />
-            </div>
-            <button
-              type="button"
-              disabled={flowLoading || !verifyCode}
-              onClick={async () => {
-                try {
-                  setFlowLoading(true);
-                  setError('');
-                  const res = await verifyForgotPassword(forgotEmail, verifyCode);
-                  if (res && res.success === false) throw new Error(res.message || 'Mã không hợp lệ');
-                  setMode('reset');
-                } catch (e) {
-                  setError(e?.message || 'Xác thực mã thất bại.');
-                } finally {
-                  setFlowLoading(false);
-                }
-              }}
-              className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-black font-semibold py-3 rounded-lg disabled:opacity-50"
-            >
-              {flowLoading ? 'Đang kiểm tra...' : 'Xác thực mã'}
-            </button>
-            <button type="button" onClick={() => setMode('forgot')} className="w-full bg-transparent border border-gray-600/60 text-white font-semibold py-3 rounded-lg hover:bg-white/10">
-              Nhập lại email
-            </button>
-          </div>
-        )}
-
-        {mode === 'reset' && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">Mật khẩu mới</label>
-              <input
-                type="password"
-                required
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                placeholder="Ít nhất 8 ký tự"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">Nhập lại mật khẩu</label>
-              <input
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                placeholder="Gõ lại mật khẩu"
-              />
-            </div>
-            <button
-              type="button"
-              disabled={flowLoading || !newPassword || newPassword !== confirmPassword}
-              onClick={async () => {
-                if (newPassword.length < 8) {
-                  setError('Mật khẩu phải có ít nhất 8 ký tự.');
-                  return;
-                }
-                try {
-                  setFlowLoading(true);
-                  setError('');
-                  const res = await resetPassword(forgotEmail, verifyCode, newPassword);
-                  if (res && res.success === false) throw new Error(res.message || 'Không thể đặt lại mật khẩu');
-                  // Sau khi reset thành công, quay lại login
-                  setMode('login');
-                  setLoginForm({ email: forgotEmail, password: '' });
-                } catch (e) {
-                  setError(e?.message || 'Không thể đặt lại mật khẩu.');
-                } finally {
-                  setFlowLoading(false);
-                }
-              }}
-              className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-black font-semibold py-3 rounded-lg disabled:opacity-50"
-            >
-              {flowLoading ? 'Đang lưu...' : 'Đặt lại mật khẩu'}
-            </button>
-            <button type="button" onClick={() => setMode('login')} className="w-full bg-transparent border border-gray-600/60 text-white font-semibold py-3 rounded-lg hover:bg-white/10">
-              Quay lại đăng nhập
-            </button>
-          </div>
-        )}
 
         {/* Google Login */}
         <div className="mt-4">

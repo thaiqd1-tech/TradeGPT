@@ -12,12 +12,14 @@ import OnboardingWorkspaceProfile from './pages/OnboardingWorkspaceProfile'
 import AgentChat from './pages/AgentChat'
 import AIAgentChat from './pages/AIAgentChat'
 import LoginPage from './pages/LoginPage'
+import ForgotPassword from './pages/ForgotPassword'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './hooks/useAuth.jsx'
 import { ThemeProvider } from './hooks/useTheme'
 import { FolderProvider } from './contexts/FolderContext'
 import './App.css'
 import ScheduledTasksPage from './pages/ScheduledTasks';
+import AgentProfilePage from './pages/AgentProfilePage';
 
 
 // Create a client
@@ -53,6 +55,7 @@ function App() {
                     </ProtectedRoute>
                   } />
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/onboarding/create-workspace" element={
                     <ProtectedRoute>
                       <OnboardingCreateWorkspace />
@@ -76,6 +79,11 @@ function App() {
                   <Route path="/dashboard/agents/:agentId" element={
                     <ProtectedRoute>
                       <AgentChat />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/agents/:agentId/profile" element={
+                    <ProtectedRoute>
+                      <AgentProfilePage />
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/ai-agents/:agentId" element={

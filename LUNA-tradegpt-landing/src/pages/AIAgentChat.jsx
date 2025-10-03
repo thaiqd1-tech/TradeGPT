@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { aiService } from '../services/ai.service';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
-import { AgentTypingIndicator } from '../components/ui/agent-typing-indicator';
+import { AgentTypingIndicator } from '../components/ui/agent-typing-indicator.jsx';
 import { useSelectedWorkspace } from '../hooks/useSelectedWorkspace';
 import { Skeleton } from '../components/ui/skeleton';
 

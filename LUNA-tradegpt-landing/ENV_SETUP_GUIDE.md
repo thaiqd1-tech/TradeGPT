@@ -6,7 +6,7 @@ Tạo file `.env` trong thư mục `C:\Users\user\source\react.js\d46d6c48-9f74-
 
 ```env
 VITE_API_BASE_URL=https://superbai.io/api
-VITE_GOOGLE_CLIENT_ID=320783837858-985qhj2ujnq3p0ngpjk2e16s3nnoajf2.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=751661411790-o290dkk1g3jdeivjqcmg5j8fa2ejn8pd.apps.googleusercontent.com
 VITE_WS_URL=wss://superbai.io/ws
 VITE_PAYPAL_CLIENT_ID=AQhtqAHPEzjovnQluOAY7tuUVuiiYxpXbYlXqQMdy4zFiGkdMKkk59G0pSpNBNW1I5TeKFvzWpJhv4M-
 VITE_AI_SERVICE_BASE_URL=https://aiapi.superbai.io/api/v1
@@ -22,7 +22,7 @@ cd C:\Users\user\source\react.js\d46d6c48-9f74-568f-98e7-b02748b645cc\LUNA-trade
 
 # Tạo file .env
 echo VITE_API_BASE_URL=https://superbai.io/api > .env
-echo VITE_GOOGLE_CLIENT_ID=320783837858-985qhj2ujnq3p0ngpjk2e16s3nnoajf2.apps.googleusercontent.com >> .env
+echo VITE_GOOGLE_CLIENT_ID=751661411790-o290dkk1g3jdeivjqcmg5j8fa2ejn8pd.apps.googleusercontent.com >> .env
 echo VITE_WS_URL=wss://superbai.io/ws >> .env
 echo VITE_PAYPAL_CLIENT_ID=AQhtqAHPEzjovnQluOAY7tuUVuiiYxpXbYlXqQMdy4zFiGkdMKkk59G0pSpNBNW1I5TeKFvzWpJhv4M- >> .env
 echo VITE_AI_SERVICE_BASE_URL=https://aiapi.superbai.io/api/v1 >> .env

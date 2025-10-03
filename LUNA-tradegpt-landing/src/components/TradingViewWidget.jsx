@@ -22,6 +22,8 @@ function normalizeInterval(interval) {
 
 function TradingViewWidget({ symbol, theme = 'dark', locale = 'en', artifact, height }) {
   const container = useRef(null);
+  const mountedRef = useRef(false);
+  const lastInitKeyRef = useRef('');
   const isMobile = typeof useIsMobile === 'function' ? useIsMobile() : (typeof window !== 'undefined' && window.innerWidth <= 640);
 
   const chartSymbol = artifact?.exchange_symbol || symbol || 'NASDAQ:AAPL';
@@ -33,8 +35,29 @@ function TradingViewWidget({ symbol, theme = 'dark', locale = 'en', artifact, he
   const id = React.useId().replace(/:/g, '');
 
   useEffect(() => {
-    if (!container.current) return;
-    container.current.innerHTML = '';
+    mountedRef.current = true;
+    if (!container.current || !container.current.isConnected) return;
+
+    const studies = Array.isArray(chartStudies) ? chartStudies : [];
+    const initKey = `${chartSymbol}|${chartInterval}|${chartTheme}|${chartLocale}|${computedHeight}|${studies.length ? JSON.stringify(studies) : ''}`;
+    if (lastInitKeyRef.current === initKey) return;
+    lastInitKeyRef.current = initKey;
+
+    // Remove previous embed scripts only
+    try {
+      container.current.querySelectorAll('script[src*="tradingview.com/external-embedding"]').forEach(s => s.parentElement?.removeChild(s));
+    } catch {}
+
+    // Ensure inner widget div exists
+    let widget = container.current.querySelector('.tradingview-widget-container__widget');
+    if (!widget) {
+      widget = document.createElement('div');
+      widget.className = 'tradingview-widget-container__widget';
+      widget.style.height = '100%';
+      widget.style.minHeight = `${computedHeight}px`;
+      widget.style.width = '100%';
+      container.current.appendChild(widget);
+    }
 
     const config = {
       allow_symbol_change: true,
@@ -57,11 +80,12 @@ function TradingViewWidget({ symbol, theme = 'dark', locale = 'en', artifact, he
       watchlist: [],
       withdateranges: false,
       compareSymbols: [],
-      studies: chartStudies,
+      ...(studies.length ? { studies } : {}),
       // IMPORTANT: disable autosize and set explicit size so height prop is respected
       autosize: false,
       width: '100%',
       height: computedHeight,
+      support_host: 'https://www.tradingview.com',
     };
 
     const script = document.createElement('script');
@@ -69,8 +93,14 @@ function TradingViewWidget({ symbol, theme = 'dark', locale = 'en', artifact, he
     script.type = 'text/javascript';
     script.async = true;
     script.innerHTML = JSON.stringify(config);
-    container.current.appendChild(script);
-  }, [chartSymbol, chartTheme, chartLocale, chartInterval, JSON.stringify(chartStudies)]);
+    requestAnimationFrame(() => {
+      if (mountedRef.current && container.current && container.current.isConnected) {
+        container.current.appendChild(script);
+      }
+    });
+
+    return () => { mountedRef.current = false; };
+  }, [chartSymbol, chartTheme, chartLocale, chartInterval, computedHeight, JSON.stringify(chartStudies)]);
 
   // computedHeight already defined above
 
@@ -84,11 +114,6 @@ function TradingViewWidget({ symbol, theme = 'dark', locale = 'en', artifact, he
       {/* Force height with an inline style tag to beat possible overrides */}
       <style>{`[data-tv-id="${id}"]{height:${computedHeight}px !important;min-height:${computedHeight}px !important}[data-tv-id="${id}"] .tradingview-widget-container__widget{height:100% !important;min-height:${computedHeight}px !important}`}</style>
       <div className="tradingview-widget-container__widget" style={{ height: '100%', minHeight: `${computedHeight}px`, width: '100%' }} />
-      <div className="tradingview-widget-copyright">
-        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">
-          <span className="blue-text">Track all markets on TradingView</span>
-        </a>
-      </div>
     </div>
   );
 }

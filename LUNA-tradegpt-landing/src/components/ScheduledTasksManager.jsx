@@ -310,7 +310,7 @@ export const ScheduledTasksManager = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Task theo lịch trình</h2>
+          <h2 className="text-2xl font-bold text-white">Task theo lịch trình</h2>
           <p className="text-muted-foreground">
             Quản lý các task tự động chạy theo lịch trình
           </p>

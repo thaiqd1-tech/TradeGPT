@@ -151,6 +151,48 @@
   animation: fadeIn 1s ease-out;
 }
 
-.animate-slide-up {
-  animation: fadeIn 1s ease-out 0.3s both;
-}
+  .animate-slide-up {
+    animation: fadeIn 1s ease-out 0.3s both;
+  }
+
+  /* Enhanced thinking animations */
+  @keyframes thinkingPulse {
+    0%, 100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes thinkingGlow {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+    }
+  }
+
+  .animate-thinking-pulse {
+    animation: thinkingPulse 2s ease-in-out infinite;
+  }
+
+  .animate-thinking-glow {
+    animation: thinkingGlow 3s ease-in-out infinite;
+  }
+
+  /* Enhanced log message styles */
+  .log-executing {
+    @apply bg-gradient-to-r from-blue-900/40 to-cyan-900/40 border-blue-500/50 text-blue-100;
+  }
+
+  .log-result {
+    @apply bg-gradient-to-r from-green-900/40 to-emerald-900/40 border-green-500/50 text-green-100;
+  }
+
+  .thinking-container {
+    @apply bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-sm border border-blue-500/30 shadow-lg hover:shadow-xl transition-all duration-300;
+  }

@@ -34,7 +34,7 @@ const ScheduledTasksPage = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
+            <h1 className="text-3xl font-bold flex items-center gap-2 text-white">
               <Calendar className="w-8 h-8" />
               Task theo lịch trình
               <RunningTasksBadge className="ml-2" />
@@ -55,7 +55,7 @@ const ScheduledTasksPage = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Tổng số task</p>
-              <p className="text-2xl font-bold">{isLoading ? '-' : total}</p>
+              <p className="text-2xl font-bold text-white">{isLoading ? '-' : total}</p>
             </div>
           </div>
         </div>
@@ -67,7 +67,7 @@ const ScheduledTasksPage = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Đang hoạt động</p>
-              <p className="text-2xl font-bold">{isLoading ? '-' : active}</p>
+              <p className="text-2xl font-bold text-white">{isLoading ? '-' : active}</p>
             </div>
           </div>
         </div>
@@ -79,7 +79,7 @@ const ScheduledTasksPage = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Đã tắt</p>
-              <p className="text-2xl font-bold">{isLoading ? '-' : inactive}</p>
+              <p className="text-2xl font-bold text-white">{isLoading ? '-' : inactive}</p>
             </div>
           </div>
         </div>

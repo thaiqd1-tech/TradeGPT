@@ -2,7 +2,7 @@
 echo Creating .env file...
 
 echo VITE_API_BASE_URL=https://superbai.io/api > .env
-echo VITE_GOOGLE_CLIENT_ID=320783837858-985qhj2ujnq3p0ngpjk2e16s3nnoajf2.apps.googleusercontent.com >> .env
+echo VITE_GOOGLE_CLIENT_ID=751661411790-o290dkk1g3jdeivjqcmg5j8fa2ejn8pd.apps.googleusercontent.com >> .env
 echo VITE_WS_URL=wss://superbai.io/ws >> .env
 echo VITE_PAYPAL_CLIENT_ID=AQhtqAHPEzjovnQluOAY7tuUVuiiYxpXbYlXqQMdy4zFiGkdMKkk59G0pSpNBNW1I5TeKFvzWpJhv4M- >> .env
 echo VITE_AI_SERVICE_BASE_URL=https://aiapi.superbai.io/api/v1 >> .env

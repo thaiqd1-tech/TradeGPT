@@ -584,7 +584,7 @@ const Header = React.memo(({ onOpenSidebar }) => {
                 )}
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] md:max-w-[700px]">
+            <DialogContent className="sm:max-w-[600px] md:max-w-[700px] text-white ">
               <div className="flex items-center justify-between border-b pb-4">
                   <div className="space-y-1">
                     <DialogTitle className="bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent font-bold text-xl">

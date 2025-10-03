@@ -24,10 +24,13 @@ class AuthService {
     try {
       console.log('AuthService: Attempting login to:', `${API_BASE_URL}/auth/login`);
       
+      const normalizedEmail = (email || '').trim().toLowerCase();
+      const normalizedPassword = (password || '').trim();
+
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword }),
       });
 
       console.log('AuthService: Response status:', response.status);

@@ -17,7 +17,8 @@ import { Textarea } from '../components/ui/textarea';
 import { Skeleton } from '../components/ui/skeleton';
 import { Paperclip, ListPlus, Book, History, Lightbulb, Trash2, Bell, Coins, Gift } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
-import { AgentTypingIndicator } from '../components/ui/agent-typing-indicator';
+import { AgentTypingIndicator } from '../components/ui/agent-typing-indicator.jsx';
+import ThinkingProcess from '../components/ThinkingProcess.jsx';
 import { websocketService } from '../services/websocket';
 import { WS_URL } from '../config/api';
 import { fakeStreamMessage } from '../utils/fakeStreaming';
@@ -66,6 +67,7 @@ const AgentChat = () => {
   const [realtimeLogs, setRealtimeLogs] = React.useState({});
   const previousAgentIdRef = React.useRef(null);
   const isInitializingRef = React.useRef(false);
+  const initializedAgentsRef = React.useRef(new Set());
   
   // Dialog states
   const [showCreditPurchase, setShowCreditPurchase] = React.useState(false);
@@ -105,6 +107,40 @@ const AgentChat = () => {
       </div>
     );
   };
+
+  // ChatInput: localizes typing state to avoid re-rendering the whole page on each keystroke
+  const ChatInput = React.memo(function ChatInput({ onSend, sending, threadId }) {
+    const [localInput, setLocalInput] = React.useState('');
+    const onSubmit = React.useCallback(() => {
+      const content = (localInput || '').trim();
+      if (!content) return;
+      setLocalInput('');
+      onSend(content);
+    }, [localInput, onSend]);
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="relative">
+          <Textarea
+            placeholder={threadId ? "Trò chuyện với nhân viên của bạn" : "Bắt đầu trò chuyện hoặc nhấn 'New chat' để tạo cuộc hội thoại mới"}
+            value={localInput}
+            onChange={(e) => setLocalInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(); } }}
+            rows={1}
+            className="pr-12 bg-background text-foreground placeholder:text-muted-foreground border border-border"
+            disabled={sending}
+          />
+          <Button
+            size="icon"
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-primary text-primary-foreground hover:opacity-90"
+            onClick={onSubmit}
+            disabled={sending || !localInput.trim()}
+          >
+            ➤
+          </Button>
+        </div>
+      </div>
+    );
+  });
 
   // Helper function for handling log display
   const handleShowLog = React.useCallback(async (messageId, userMessageId) => {
@@ -237,28 +273,64 @@ const AgentChat = () => {
     }
   }, [agent?.greeting_message]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
-    
-    const content = input.trim();
-    setInput('');
+  // Wait until WebSocket connection is open before sending any message
+  const waitForWebSocketOpen = React.useCallback(async (timeoutMs = 5000) => {
+    if (websocketService.getConnectionState() === 'open') return;
+    await new Promise((resolve, reject) => {
+      let settled = false;
+      const onStateChange = (state) => {
+        if (state === 'open' && !settled) {
+          settled = true;
+          websocketService.unsubscribeFromStateChange(onStateChange);
+          resolve();
+        }
+        if (state === 'error' && !settled) {
+          settled = true;
+          websocketService.unsubscribeFromStateChange(onStateChange);
+          reject(new Error('WebSocket error'));
+        }
+      };
+      websocketService.subscribeToStateChange(onStateChange);
+      setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          websocketService.unsubscribeFromStateChange(onStateChange);
+          reject(new Error('WebSocket open timeout'));
+        }
+      }, timeoutMs);
+    });
+  }, []);
+
+  const sendMessage = async (content) => {
+    if (!content || !content.trim()) return;
+    const trimmed = content.trim();
     setSending(true);
     const optimisticId = `optimistic-${Date.now()}`;
     
-    // Use current thread ID
+    // Use current thread ID, create one if needed
     let currentThreadId = threadId;
     if (!currentThreadId) {
-      console.log('[DBG] No thread ID available, cannot send message');
-      setError('Vui lòng tạo cuộc hội thoại mới trước khi gửi tin nhắn');
-      setSending(false);
-      return;
+      console.log('[DBG] No thread ID available, creating new thread automatically');
+      try {
+        currentThreadId = await loadOrCreateThread(true);
+        if (!currentThreadId) {
+          setError('Không thể tạo cuộc hội thoại mới');
+          setSending(false);
+          return;
+        }
+        setThreadId(currentThreadId);
+      } catch (error) {
+        console.error('[DBG] Error creating thread:', error);
+        setError('Không thể tạo cuộc hội thoại mới: ' + (error?.message || 'Unknown error'));
+        setSending(false);
+        return;
+      }
     }
     
     setMessages((prev) => {
-      const optimisticMsg = { id: optimisticId, role: 'user', content, timestamp: new Date().toISOString() };
-      // Remove greeting message when user sends first message
-      const filteredPrev = prev.filter(m => m.id !== 'greeting');
-      return [...filteredPrev, optimisticMsg];
+      const optimisticMsg = { id: optimisticId, role: 'user', content: trimmed, timestamp: new Date().toISOString() };
+      // Keep greeting message until we get real response from agent
+      return [...prev, optimisticMsg];
     });
     
     try {
@@ -272,25 +344,35 @@ const AgentChat = () => {
           const url = `${WS_URL}?token=${token}&thread_id=${currentThreadId}`;
           websocketService.connect(url);
           websocketService.joinThread(currentThreadId);
+          
+          // Đợi WebSocket sẵn sàng trước khi gửi tin nhắn
+          await waitForWebSocketOpen();
         }
       }
+      
+      console.log('[SEND->WS] Sending message', {
+        thread_id: currentThreadId,
+        optimisticId,
+        content_length: (content || '').length,
+        ws_state: websocketService.getConnectionState(),
+      });
       
       websocketService.send({
         type: 'chat',
         thread_id: currentThreadId,
-        content,
+        content: trimmed,
         sender_type: 'user',
         sender_user_id: user?.id,
         message_id: optimisticId,
       });
       
-      // Refresh threads list if this was the first message
-      if (!threadId) {
-        setTimeout(() => {
-          console.log('[DBG] Refreshing threads list after first message');
-          fetchThreads();
-        }, 2000);
-      }
+      console.log('[SEND->WS] Message sent, waiting for response...');
+      
+      // Refresh threads list if this was the first message or new thread was created
+      setTimeout(() => {
+        console.log('[DBG] Refreshing threads list after sending message');
+        fetchThreads();
+      }, 2000);
       // Verify delivery after a short delay
       setTimeout(async () => {
         try {
@@ -302,7 +384,7 @@ const AgentChat = () => {
             timestamp: m.created_at,
           }));
           const lastUser = [...serverMsgs].reverse().find((m) => m.role === 'user');
-          const receivedUser = lastUser && lastUser.content?.trim() === content.trim();
+          const receivedUser = lastUser && lastUser.content?.trim() === trimmed;
           const reply = [...serverMsgs].reverse().find((m) => m.role === 'assistant');
           if (receivedUser) {
             toast({ title: 'Đã nhận prompt', description: 'Server đã lưu tin nhắn của bạn.' });
@@ -355,7 +437,8 @@ const AgentChat = () => {
         
         // Set new thread and load messages
         setThreadId(newThreadId);
-        await loadMessages(newThreadId);
+        // Don't load messages for new thread - keep greeting message
+        // await loadMessages(newThreadId);
         
         // Refresh threads list to show the new thread in sidebar
         await fetchThreads();
@@ -440,9 +523,16 @@ const AgentChat = () => {
       return;
     }
 
-    // Skip if same agent and already have threadId
+    // Skip if same agent and already have threadId (but not for new agents)
     if (agentId === previousAgentIdRef.current && threadId) {
       console.log('[DBG] Same agent with existing threadId, skipping init');
+      return;
+    }
+
+    // Skip if we've already initialized this agent
+    const agentKey = `${agentId}-${workspaceId}`;
+    if (initializedAgentsRef.current.has(agentKey)) {
+      console.log('[DBG] Agent already initialized, skipping...', agentKey);
       return;
     }
 
@@ -454,12 +544,18 @@ const AgentChat = () => {
       try {
         console.log('[DBG] init AgentChat', { agentId, workspaceId });
         
+        // Mark this agent as initialized
+        initializedAgentsRef.current.add(agentKey);
+        
         // Reset all states when switching agents to avoid duplicates
         setMessages([]);
         setMessageLogs({});
         setLoadingLog({});
         setTaskRuns([]);
         setError('');
+        
+        // Clear any stored thread ID for this agent to force fresh connection
+        setStoredThreadId(agentId, workspaceId, null);
         
         const a = await getAgentById(agentId);
         const agentData = a?.data || a;
@@ -542,6 +638,8 @@ const AgentChat = () => {
       // Reset refs khi unmount để tránh stuck state
       isInitializingRef.current = false;
       previousAgentIdRef.current = null;
+      // Clear initialized agents when component unmounts
+      initializedAgentsRef.current.clear();
     };
   }, [agentId, workspaceId]);
 
@@ -551,6 +649,8 @@ const AgentChat = () => {
     // Only connect WebSocket if we have a threadId
     if (!threadId) {
       console.log('[DBG] No threadId, skipping WebSocket connection');
+      // Disconnect any existing WebSocket to avoid stale connections
+      websocketService.disconnect();
       return;
     }
     
@@ -566,6 +666,7 @@ const AgentChat = () => {
       try {
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
         console.log('🔔 Received WebSocket message:', data);
+        console.log('🔍 Message type:', data.type, 'Thread ID:', data.thread_id || 'N/A');
 
         // Debug: Kiểm tra tất cả message types
         if (data.type) {
@@ -593,9 +694,8 @@ const AgentChat = () => {
               return copy;
             }
             if (!prev.some((m) => m.id === confirmed.id)) {
-              // Remove greeting message when confirming real message
-              const filteredPrev = prev.filter(m => m.id !== 'greeting');
-              return [...filteredPrev, confirmed];
+              // Keep greeting message until we get real agent response
+              return [...prev, confirmed];
             }
             return prev;
           });
@@ -630,9 +730,8 @@ const AgentChat = () => {
             // Kiểm tra xem message đã tồn tại chưa để tránh duplicate
             setMessages((prev) => {
               if (prev.some(m => m.id === newId)) return prev;
-              // Remove greeting message if it exists when real agent message comes
-              const filteredPrev = prev.filter(m => m.id !== 'greeting');
-              return [...filteredPrev, { id: newId, role: 'assistant', content: '', timestamp: msg.created_at, isStreaming: true, artifact: msg.artifact }];
+              // Keep greeting message and add agent response below it
+              return [...prev, { id: newId, role: 'assistant', content: '', timestamp: msg.created_at, isStreaming: true, artifact: msg.artifact }];
             });
 
             const full = msg.message_content || msg.content || '';
@@ -659,9 +758,8 @@ const AgentChat = () => {
           } else {
             setMessages((prev) => {
               const newUserMsg = { id: msg.id || `ws-${Date.now()}`, role: 'user', content: msg.message_content || msg.content, timestamp: msg.created_at };
-              // Remove greeting message if user sends first message
-              const filteredPrev = prev.filter(m => m.id !== 'greeting');
-              return [...filteredPrev, newUserMsg];
+              // Keep greeting message until we get real agent response
+              return [...prev, newUserMsg];
             });
           }
           return;
@@ -750,6 +848,9 @@ const AgentChat = () => {
     websocketService.subscribe('done', onMessage);
     websocketService.subscribe('credit_update', onMessage);
     websocketService.subscribe('status', onMessage);
+    // Subscribe to thinking logs from backend
+    websocketService.subscribe('subflow_log', onMessage);
+    websocketService.subscribe('subflow_result', onMessage);
 
     return () => {
       console.log('[DBG] WebSocket cleanup for thread:', threadId);
@@ -757,6 +858,8 @@ const AgentChat = () => {
       websocketService.unsubscribe('done', onMessage);
       websocketService.unsubscribe('credit_update', onMessage);
       websocketService.unsubscribe('status', onMessage);
+      websocketService.unsubscribe('subflow_log', onMessage);
+      websocketService.unsubscribe('subflow_result', onMessage);
       // Don't disconnect here as it might be used by other components
     };
   }, [threadId]);
@@ -987,31 +1090,20 @@ const AgentChat = () => {
                       )}
                     />
                   </div>
+                  {/* Hiển thị ThinkingProcess với realtimeLogs */}
+                  {Object.keys(realtimeLogs).length > 0 && (
+                    <div className="mt-3">
+                      <ThinkingProcess 
+                        isDark={true} 
+                        realtimeLogs={realtimeLogs}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
             <div className="border-t border-border p-4">
-              <div className="max-w-4xl mx-auto">
-                <div className="relative">
-                  <Textarea
-                    placeholder={threadId ? "Trò chuyện với nhân viên của bạn" : "Nhấn 'New chat' để bắt đầu cuộc hội thoại mới"}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    rows={1}
-                    className="pr-12 bg-background text-foreground placeholder:text-muted-foreground border border-border"
-                    disabled={sending || !threadId}
-                  />
-                  <Button
-                    size="icon"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-primary text-primary-foreground hover:opacity-90"
-                    onClick={handleSend}
-                    disabled={sending || !input.trim() || !threadId}
-                  >
-                    ➤
-                  </Button>
-                </div>
-              </div>
+              <ChatInput onSend={sendMessage} sending={sending} threadId={threadId} />
             </div>
           </main>
         </div>
