@@ -18,7 +18,6 @@ import { Skeleton } from '../components/ui/skeleton';
 import { Paperclip, ListPlus, Book, History, Lightbulb, Trash2, Bell, Coins, Gift } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { AgentTypingIndicator } from '../components/ui/agent-typing-indicator.jsx';
-import LogAgentThinking from '../components/LogAgentThinking.jsx';
 import ThinkingProcess from '../components/ThinkingProcess.jsx';
 import { websocketService } from '../services/websocket';
 import { WS_URL } from '../config/api';
@@ -66,6 +65,7 @@ const AgentChat = () => {
   const chatRef = React.useRef(null);
   const [isThinking, setIsThinking] = React.useState(false);
   const [realtimeLogs, setRealtimeLogs] = React.useState({});
+  const realtimeLogsRef = React.useRef({});
   const previousAgentIdRef = React.useRef(null);
   const isInitializingRef = React.useRef(false);
   const initializedAgentsRef = React.useRef(new Set());
@@ -80,6 +80,45 @@ const AgentChat = () => {
   const [messageLogs, setMessageLogs] = React.useState({});
   const [loadingLog, setLoadingLog] = React.useState({});
   const [logsByMessage, setLogsByMessage] = React.useState({});
+  const previousThreadIdRef = React.useRef(null);
+
+  const getLogsStorageKey = React.useCallback((tid) => tid ? `logs_${tid}` : null, []);
+
+  // Sync ref for realtimeLogs to use latest inside WS handlers
+  React.useEffect(() => {
+    realtimeLogsRef.current = realtimeLogs;
+  }, [realtimeLogs]);
+
+  // Load persisted logs when switching/setting thread
+  React.useEffect(() => {
+    if (!threadId) {
+      setLogsByMessage({});
+      return;
+    }
+    try {
+      const key = getLogsStorageKey(threadId);
+      const raw = key ? localStorage.getItem(key) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed === 'object') {
+        setLogsByMessage(parsed);
+      } else {
+        setLogsByMessage({});
+      }
+    } catch {
+      setLogsByMessage({});
+    }
+  }, [threadId, getLogsStorageKey]);
+
+  // Persist logs per thread whenever logsByMessage or threadId changes
+  React.useEffect(() => {
+    if (!threadId) return;
+    try {
+      const key = getLogsStorageKey(threadId);
+      if (key) localStorage.setItem(key, JSON.stringify(logsByMessage || {}));
+    } catch {
+      // ignore quota/JSON errors
+    }
+  }, [logsByMessage, threadId, getLogsStorageKey]);
 
   // Debug realtimeLogs changes
   React.useEffect(() => {
@@ -489,6 +528,11 @@ const AgentChat = () => {
 
     try {
       await deleteThread(threadIdToDelete);
+      // Remove persisted logs for this thread
+      try {
+        const key = getLogsStorageKey(threadIdToDelete);
+        if (key) localStorage.removeItem(key);
+      } catch {}
 
       // Nếu đang xóa thread hiện tại, chuyển về trạng thái ban đầu
       if (threadId === threadIdToDelete) {
@@ -751,6 +795,21 @@ const AgentChat = () => {
                 return copy;
               });
             }, 5, 'chunk');
+
+            // Migrate any accumulated logs (by user msg id/thread) to this assistant message id
+            try {
+              const candidateKeys = [msg.id, msg.parent_message_id, msg.thread_id, 'default'].filter(Boolean);
+              setLogsByMessage((prev) => {
+                const combined = Array.isArray(prev[newId]) ? [...prev[newId]] : [];
+                candidateKeys.forEach((k) => {
+                  const arr = realtimeLogsRef.current && Array.isArray(realtimeLogsRef.current[k]) ? realtimeLogsRef.current[k] : [];
+                  if (arr && arr.length) combined.push(...arr);
+                });
+                return combined.length ? { ...prev, [newId]: combined } : prev;
+              });
+            } catch (e) {
+              console.warn('Log migration error (chat):', e);
+            }
           } else {
             setMessages((prev) => {
               const newUserMsg = { id: msg.id || `ws-${Date.now()}`, role: 'user', content: msg.message_content || msg.content, timestamp: msg.created_at };
@@ -770,6 +829,23 @@ const AgentChat = () => {
             if (last.role === 'assistant' && last.isStreaming) copy[copy.length - 1] = { ...last, isStreaming: false };
             return copy;
           });
+          // Ensure logs are persisted to the last assistant message
+          try {
+            const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
+            if (lastAssistant && lastAssistant.id) {
+              const candidateKeys = [lastAssistant.id, lastAssistant.parent_message_id, threadId, 'default'].filter(Boolean);
+              setLogsByMessage((prev) => {
+                const combined = Array.isArray(prev[lastAssistant.id]) ? [...prev[lastAssistant.id]] : [];
+                candidateKeys.forEach((k) => {
+                  const arr = realtimeLogsRef.current && Array.isArray(realtimeLogsRef.current[k]) ? realtimeLogsRef.current[k] : [];
+                  if (arr && arr.length) combined.push(...arr);
+                });
+                return combined.length ? { ...prev, [lastAssistant.id]: combined } : prev;
+              });
+            }
+          } catch (e) {
+            console.warn('Log migration error (done):', e);
+          }
           // Refresh threads list when conversation is done
           setTimeout(() => {
             console.log('[DBG] Refreshing threads list after conversation done');
@@ -1025,6 +1101,14 @@ const AgentChat = () => {
                       handleShowLog={handleShowLog}
                     >
                       <div className={m.role === 'user' ? 'text-right' : 'text-left'}>
+                        {m.role === 'assistant' && Array.isArray(logsByMessage[m.id]) && logsByMessage[m.id].length > 0 && (
+                          <div className="mb-2 inline-block px-4 py-3 rounded-xl bg-slate-800/40 border border-blue-500/30 max-w-[75%] text-left">
+                            <AgentTypingIndicator
+                              subflowLogs={logsByMessage[m.id]}
+                              showProcessing={false}
+                            />
+                          </div>
+                        )}
                         <div className={`inline-block px-4 py-2.5 rounded-xl max-w-[75%] ${m.role === 'user' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-800/60 text-slate-100 border border-slate-700/50'}`}>
                           {m.role === 'assistant' ? (
                             <ChatMessageContent
@@ -1053,12 +1137,7 @@ const AgentChat = () => {
                         <div className={`text-xs text-slate-400 mt-1.5 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
                           {m.timestamp ? new Date(m.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
                         </div>
-                        {/* Persistent realtime logs for this assistant message */}
-                        {m.role === 'assistant' && Array.isArray(logsByMessage[m.id]) && logsByMessage[m.id].length > 0 && (
-                          <div className="mt-3 max-w-[75%]">
-                            <LogAgentThinking logs={logsByMessage[m.id]} isCollapsed={false} />
-                          </div>
-                        )}
+                        
                         {/* TaskHistory for assistant messages */}
                         {m.role === 'assistant' && messageLogs[m.id] && messageLogs[m.id].length > 0 && (
                           <div className="mt-4 max-w-[75%]">

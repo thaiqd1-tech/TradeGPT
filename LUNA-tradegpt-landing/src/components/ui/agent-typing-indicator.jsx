@@ -9,7 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 export const AgentTypingIndicator = memo(
-  ({ agentName, agentAvatar, subflowLogs = [] }) => {
+  ({ agentName, agentAvatar, subflowLogs = [], showProcessing = true }) => {
     const containerRef = useRef(null);
     const [isExpanded, setIsExpanded] = useState(false);
     const { t } = useTranslation();
@@ -150,7 +150,7 @@ export const AgentTypingIndicator = memo(
 
 
               {/* Enhanced thinking animation */}
-              {(() => {
+              {showProcessing && (() => {
                 const latestLog = subflowLogs[subflowLogs.length - 1];
                 const content = latestLog?.content?.toLowerCase() || "";
                 const isDone = [
