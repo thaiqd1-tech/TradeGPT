@@ -227,7 +227,7 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin, title, subtitle }) => {
               </div>
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] hover:opacity-90 text-black font-semibold py-3 rounded-lg transition-all"
+                className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] hover:opacity-90 text-white font-semibold py-3 rounded-lg transition-all"
                 size="lg"
                 disabled={loading || googleLoading}
               >
@@ -268,7 +268,7 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin, title, subtitle }) => {
                   className="w-full bg-[#27272A] border border-gray-600/50 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <Button type="submit" className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] hover:opacity-90 text-black font-semibold py-3 rounded-lg transition-all" size="lg">
+              <Button type="submit" className="w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] hover:opacity-90 text-white font-semibold py-3 rounded-lg transition-all" size="lg">
                 Xác thực email & hoàn tất
               </Button>
               <Button

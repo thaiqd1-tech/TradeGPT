@@ -31,10 +31,17 @@ const ThinkingProcess = ({ isDark, steps, realtimeLogs = {} }) => {
   // Xử lý realtimeLogs từ websocket
   useEffect(() => {
     if (realtimeLogs && Object.keys(realtimeLogs).length > 0) {
-      const allLogs = Object.values(realtimeLogs).flatMap(logs => 
-        Object.values(logs).filter(log => log && typeof log === 'object')
-      );
-      
+      // Hỗ trợ cả 2 dạng: object-of-objects và object-of-arrays
+      const allLogs = Object.values(realtimeLogs).flatMap((entry) => {
+        if (Array.isArray(entry)) {
+          return entry;
+        }
+        if (entry && typeof entry === 'object') {
+          return Object.values(entry);
+        }
+        return [];
+      }).filter((log) => log && typeof log === 'object');
+
       const formattedSteps = allLogs.map((log, index) => ({
         id: `${log.thread_id || 'default'}-${index}`,
         type: log.log_type === 'result' ? 'result' : 'execute',
@@ -43,7 +50,7 @@ const ThinkingProcess = ({ isDark, steps, realtimeLogs = {} }) => {
         timestamp: log.timestamp,
         logType: log.log_type
       }));
-      
+
       setProcessedSteps(formattedSteps);
     } else if (steps && steps.length > 0) {
       // Fallback cho steps cũ

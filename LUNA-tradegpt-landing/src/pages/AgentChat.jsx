@@ -18,6 +18,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { Paperclip, ListPlus, Book, History, Lightbulb, Trash2, Bell, Coins, Gift } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { AgentTypingIndicator } from '../components/ui/agent-typing-indicator.jsx';
+import LogAgentThinking from '../components/LogAgentThinking.jsx';
 import ThinkingProcess from '../components/ThinkingProcess.jsx';
 import { websocketService } from '../services/websocket';
 import { WS_URL } from '../config/api';
@@ -78,6 +79,7 @@ const AgentChat = () => {
   const [taskRuns, setTaskRuns] = React.useState([]);
   const [messageLogs, setMessageLogs] = React.useState({});
   const [loadingLog, setLoadingLog] = React.useState({});
+  const [logsByMessage, setLogsByMessage] = React.useState({});
 
   // Debug realtimeLogs changes
   React.useEffect(() => {
@@ -719,12 +721,6 @@ const AgentChat = () => {
               return;
             }
             setIsThinking(false);
-            // Reset realtimeLogs cho message agent này
-            setRealtimeLogs((prev) => {
-              const newLogs = { ...prev };
-              if (msg.id) delete newLogs[msg.id];
-              return newLogs;
-            });
             const newId = msg.id;
 
             // Kiểm tra xem message đã tồn tại chưa để tránh duplicate
@@ -767,15 +763,6 @@ const AgentChat = () => {
 
         if (data.type === 'done') {
           setIsThinking(false);
-          // Reset realtimeLogs cho message agent cuối cùng
-          setRealtimeLogs((prev) => {
-            const newLogs = { ...prev };
-            const lastMsg = messages[messages.length - 1];
-            if (lastMsg && lastMsg.role === 'assistant' && lastMsg.id) {
-              delete newLogs[lastMsg.id];
-            }
-            return newLogs;
-          });
           setMessages((prev) => {
             if (prev.length === 0) return prev;
             const copy = [...prev];
@@ -826,16 +813,16 @@ const AgentChat = () => {
 
           console.log('🔍 Processing log - msgId:', msgId, 'logType:', logType);
 
+          // Lưu log theo dạng danh sách để không bị ghi đè
           setRealtimeLogs((prev) => {
-            const newLogs = {
-              ...prev,
-              [msgId]: {
-                ...prev[msgId],
-                [logType]: log
-              }
-            };
-            console.log('🔍 Updated realtimeLogs:', newLogs);
+            const list = Array.isArray(prev[msgId]) ? prev[msgId] : [];
+            const newLogs = { ...prev, [msgId]: [...list, log] };
+            console.log('🔍 Updated realtimeLogs (array):', newLogs);
             return newLogs;
+          });
+          setLogsByMessage((prev) => {
+            const list = Array.isArray(prev[msgId]) ? prev[msgId] : [];
+            return { ...prev, [msgId]: [...list, log] };
           });
           return;
         }
@@ -1066,6 +1053,12 @@ const AgentChat = () => {
                         <div className={`text-xs text-slate-400 mt-1.5 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
                           {m.timestamp ? new Date(m.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
                         </div>
+                        {/* Persistent realtime logs for this assistant message */}
+                        {m.role === 'assistant' && Array.isArray(logsByMessage[m.id]) && logsByMessage[m.id].length > 0 && (
+                          <div className="mt-3 max-w-[75%]">
+                            <LogAgentThinking logs={logsByMessage[m.id]} isCollapsed={false} />
+                          </div>
+                        )}
                         {/* TaskHistory for assistant messages */}
                         {m.role === 'assistant' && messageLogs[m.id] && messageLogs[m.id].length > 0 && (
                           <div className="mt-4 max-w-[75%]">
@@ -1085,9 +1078,7 @@ const AgentChat = () => {
                 <div className="text-left">
                   <div className="inline-block px-4 py-3 rounded-xl bg-slate-800/40 border border-blue-500/30">
                     <AgentTypingIndicator
-                      subflowLogs={Object.values(realtimeLogs).flatMap(logs =>
-                        Object.values(logs).filter(log => log && typeof log === 'object')
-                      )}
+                      subflowLogs={Object.values(realtimeLogs).flat().filter(log => log && typeof log === 'object')}
                     />
                   </div>
                   {/* Hiển thị ThinkingProcess với realtimeLogs */}

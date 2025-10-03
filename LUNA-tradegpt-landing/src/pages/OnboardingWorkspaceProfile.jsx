@@ -127,7 +127,7 @@ const OnboardingWorkspaceProfile = () => {
           </div>
         </div>
 
-        <button type="submit" disabled={saving} className="mt-6 w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-black font-semibold py-3 rounded-lg">
+        <button type="submit" disabled={saving} className="mt-6 w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-white font-semibold py-3 rounded-lg">
           {saving ? 'Đang lưu...' : 'Hoàn tất và vào Dashboard'}
         </button>
       </form>

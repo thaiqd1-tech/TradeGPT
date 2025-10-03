@@ -17,7 +17,7 @@ const badgeVariants = cva(
         outline: "text-foreground",
         success: "border-transparent bg-success text-success-foreground hover:bg-success/80",
         gradient:
-          "bg-white text-black shadow-lg hover:bg-gradient-to-r hover:from-purple-600 hover:to-indigo-600 hover:text-white dark:bg-primary dark:text-white dark:hover:bg-primary border-none ",
+          "bg-white text-gray-900 shadow-lg hover:bg-gradient-to-r hover:from-purple-600 hover:to-indigo-600 hover:text-white dark:bg-primary dark:text-white dark:hover:bg-primary border-none ",
         filteractive: "bg-[#8b5cf6] text-white hover:bg-[#a259ec] border-transparent",
       },
     },

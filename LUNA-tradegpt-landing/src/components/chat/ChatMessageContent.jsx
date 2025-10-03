@@ -584,8 +584,8 @@ export const ChatMessageContent = memo(
     const containerClassName = cn(
       "w-full",
       isAgent
-        ? "text-black dark:text-slate-100"
-        : "text-black dark:text-slate-100",
+        ? "text-white dark:text-white"
+        : "text-white dark:text-white",
       isAgent ? "bg-transparent" : "bg-transparent"
     );
 

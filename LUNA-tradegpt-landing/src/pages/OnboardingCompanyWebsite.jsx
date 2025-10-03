@@ -43,7 +43,7 @@ const OnboardingCompanyWebsite = () => {
                  onChange={(e) => setWebsite(e.target.value)} />
         </div>
         <button type="submit" disabled={loading}
-                className="mt-6 w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-black font-semibold py-3 rounded-lg">
+                className="mt-6 w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-white font-semibold py-3 rounded-lg">
           {loading ? 'Đang xử lý...' : 'Tiếp tục'}
         </button>
         <button type="button"

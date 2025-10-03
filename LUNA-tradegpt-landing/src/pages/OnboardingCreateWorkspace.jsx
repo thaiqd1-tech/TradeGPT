@@ -84,7 +84,7 @@ const OnboardingCreateWorkspace = () => {
           </div>
         </div>
         <button type="submit" disabled={submitting}
-                className="mt-6 w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-black font-semibold py-3 rounded-lg">
+                className="mt-6 w-full bg-gradient-to-r from-[#25A6E9] to-[#3AF2B0] text-white font-semibold py-3 rounded-lg">
           {submitting ? 'Đang tạo...' : 'Tạo workspace'}
         </button>
       </form>
